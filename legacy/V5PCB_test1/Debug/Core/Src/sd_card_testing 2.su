@@ -1,0 +1,4 @@
+../Core/Src/sd_card_testing.c:13:6:sd_card_write_test	120	static
+../Core/Src/sd_card_testing.c:44:6:sd_card_flush_complete_test	224	static
+../Core/Src/sd_card_testing.c:85:6:sd_card_flush_interrupted_test	224	static
+../Core/Src/sd_card_testing.c:126:6:sd_card_flush_freq_test	232	static

@@ -1,0 +1,10 @@
+../Core/Src/main.c:75:6:sd_card_write_to_csv	2
+../Core/Src/main.c:101:5:main	3
+../Core/Src/main.c:192:6:SystemClock_Config	3
+../Core/Src/main.c:240:13:MX_SPI1_Init	2
+../Core/Src/main.c:278:13:MX_TIM13_Init	2
+../Core/Src/main.c:309:13:MX_TIM14_Init	2
+../Core/Src/main.c:340:13:MX_UART4_Init	2
+../Core/Src/main.c:373:13:MX_GPIO_Init	1
+../Core/Src/main.c:388:6:HAL_TIM_PeriodElapsedCallback	6
+../Core/Src/main.c:426:6:Error_Handler	1
