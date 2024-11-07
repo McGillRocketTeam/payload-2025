@@ -12,7 +12,7 @@ The DMA controller is a specialized peripheral used for transferring large amoun
 
 In essence, DMA helps offload the CPU when dealing with large data transfers, while ADC helps convert analog signals into digital data that the microcontroller can process.
 
-![1727580502145](image/ADC_DMADocumentation/1727580502145.png)
+![1727580502145](assets/ADC_DMADocumentation/1727580502145.png)
 
 ---
 
