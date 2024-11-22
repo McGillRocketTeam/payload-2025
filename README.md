@@ -36,7 +36,7 @@ This folder contains the STM32CubeIDE project and its associated code which will
 
 This folder will contain the STM32CubeIDE projects and other files used for testing and R&D. This is where proof of concept tests and testing of features will be conducted before they are implemented on the [main PCB](#main).
 
-Each project should be contained within in its own subfolder in the R&D folder. 
+Each project should be contained within in its own subfolder in the R&D folder. *Subfolder names should be all lowercase with underscores (`_`) for spaces.*
 
 *A separate STM32CubeIDE project should be made for each test/R&D effort in order to keep the code modular and readable. 
 Once you're done and have completed the test, you should make a `README.md` file in the project root documenting what changing you made to the default project to achieve the desired result and explain any decisions you made.
@@ -66,12 +66,12 @@ This is where all of the finalized code and documentation will live. When things
 
 ## Making a Branch
 
-*Whenever you start working on a new feature/test/R&D effort, you should make a new branch with a representative name.*
+*Whenever you start working on a new feature/test/R&D effort, you should make a new branch with a representative name. Branches should be named in all lowercase with dashes (`-`) for spaces.*
 
 If you work on something other than an STM32 project like a script or documentation, as long as it doesn't affect too much, the work can be done in the main branch. Use your judgement, or ask a lead.
 
 *Example:*
-To test a new temperature sensor, make a new branch off of main called `temperature_sensor`. 
+To test a new temperature sensor, make a new branch off of main called `temperature-sensor`. 
 
 ## Merging a Branch
 
