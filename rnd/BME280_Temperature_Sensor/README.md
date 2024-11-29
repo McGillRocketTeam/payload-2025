@@ -14,6 +14,7 @@ There are three floats defined in main.c: Temperature, Pressure, and Humidity. T
 - As stated in Siger's repository, use a resistor between 2 kOhms and 10 kOhms
 - Make sure to use 3.3V
 - Make sure your pinout is correct
+- Make sure to click debug instead of run to be able to view the variables in the debug menu!
 
 ## Resources
 [Tutorial](https://www.youtube.com/watch?v=jDhkfe2YG_o) for an explanation of the BME280 drivers, how it works, and the clock configuration
