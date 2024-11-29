@@ -18,7 +18,7 @@ There are three floats defined in main.c: Temperature, Pressure, and Humidity. T
 
 ### Clock Configuration
 
-The tutorial set the maximum clock frequency to 72Mhz, and I did too. This works. Changing the maximum frequency can cause the sensor to fail to read data; I believe this is because of the synchronous nature of I2C (I think this is mentioned in the tutorial, but I skipped most of it). You can read more about it in the pages linked below.
+The tutorial set the maximum clock frequency to 72Mhz, and I did too. This works. Changing the maximum frequency can cause the sensor to fail to read data; I believe this is because of the synchronous nature of I2C (I think this is mentioned in the tutorial, but I skipped most of it). The sensor works on 72Mhz and 36Mhz, but fails on 18Mhz and 9Mhz. My guess is that since I2C sends data in packets of 9 bits, the clock frequency has to be a multiple of 9 and greater than some unknown threshold, though I'm not 100% sure. You can read more about it in the pages linked below.
 
 ## Resources
 [Tutorial](https://www.youtube.com/watch?v=jDhkfe2YG_o) for an explanation of the BME280 drivers, how it works, and the clock configuration
