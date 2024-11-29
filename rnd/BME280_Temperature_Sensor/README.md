@@ -16,9 +16,17 @@ There are three floats defined in main.c: Temperature, Pressure, and Humidity. T
 - Make sure your pinout is correct
 - Make sure to click debug instead of run to be able to view the variables in the debug menu!
 
+### Clock Configuration
+
+The tutorial set the maximum clock frequency to 72Mhz, and I did too. This works. Changing the maximum frequency can cause the sensor to fail to read data; I believe this is because of the synchronous nature of I2C (I think this is mentioned in the tutorial, but I skipped most of it). You can read more about it in the pages linked below.
+
 ## Resources
 [Tutorial](https://www.youtube.com/watch?v=jDhkfe2YG_o) for an explanation of the BME280 drivers, how it works, and the clock configuration
 
 [Siger's repository](https://github.com/McGillRocketTeam/Orbital_2023-24_Payload/tree/training/BME280_Training) for the pinout layout
 
 [Datasheet](https://cdn.sparkfun.com/assets/e/7/3/b/1/BME280_Datasheet.pdf)
+
+[I2C Protocol](https://en.wikipedia.org/wiki/I%C2%B2C)
+
+[More about the I2C Protocol](https://www.geeksforgeeks.org/i2c-communication-protocol/)
