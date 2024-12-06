@@ -103,9 +103,6 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	while (1) {
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
 		/*for (int i = 0; i < 255; i++) {
 			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, i); //Gradually increase Duty Cycle, i = CCR1 register
 			HAL_Delay(10);
@@ -120,8 +117,9 @@ int main(void)
 			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, i);
 			HAL_Delay(2000);
 		}
+    /* USER CODE END WHILE */
 
-
+    /* USER CODE BEGIN 3 */
 	}
   /* USER CODE END 3 */
 }
