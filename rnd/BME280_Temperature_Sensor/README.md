@@ -4,10 +4,20 @@ This project uses a BME280 sensor to read temperature, pressure, and humidity. D
 **All resources are linked down below.**
 
 ### Setup
-To setup the project, I first followed the tutorial to configure the clock and communication channel, enabling the crystal clock and setting it to 72Mhz. I also enabled I2C (though this sensor supports sbi as well) and turned on the Serial Wire debug. From Siger's repository, I copied the BME280_STM32.c and BME280_STM32.h files and also the main file. 
+To setup the project, I first followed the tutorial to configure the clock and communication channel, enabling the crystal clock and setting it to 72Mhz. I also enabled I2C (though this sensor supports SPI as well) and turned on the Serial Wire debug. From Siger's repository, I copied the [`BME280_STM32.c`](./Core/Src/BME280_STM32.c) and [`BME280_STM32.h`](./Core/Src/BME280_STM32.c) files and also the main file. 
 
 ### Code
-There are three floats defined in main.c: Temperature, Pressure, and Humidity. These variables can be used how you like. There's also a BME280_Config() function that configures the BME280; the settings used work well at room temperature indoors, but please refer to the tutorial video and datasheet to configure it to your needs. In the main while loop, use BME280_Measure() to measure, and you can change HAL_Delay(<delay_in_milliseconds>) to whatever you like, or even remove it. To see the values of temp/pressure/humidity, do the following: build the project -> run in debug mode -> open the debug menu in the upper right corner -> go to live expressions -> add expressions for "Temperature", "Pressure", and "Humidity" (I am unsure if these are case sensitive) -> run in debug mode.
+There are three floats defined in `main.c`: Temperature, Pressure, and Humidity. These variables can be used how you like. There's also a `BME280_Config` function that configures the BME280; the settings used work well at room temperature indoors. The documentation for this function can be found in the documentation comment for the function declaration in [`BME280_STM32.h`](./Core/Src/BME280_STM32.h). 
+
+In the main while loop, use `BME280_Measure()` to measure, and you can change `HAL_Delay(<delay_in_milliseconds>)` to whatever you like, or even remove it. 
+
+To see the values of temp/pressure/humidity, do the following: 
+- build the project -
+- run in debug mode
+- open the debug menu in the upper right corner
+- go to live expressions
+- add expressions for "Temperature", "Pressure", and "Humidity" (I am unsure if these are case sensitive)
+- run in debug mode.
 
 ### Cautions
 
@@ -18,7 +28,7 @@ There are three floats defined in main.c: Temperature, Pressure, and Humidity. T
 
 ### Clock Configuration
 
-The tutorial set the maximum clock frequency to 72Mhz, and I did too. This works. Changing the maximum frequency can cause the sensor to fail to read data; I believe this is because of the synchronous nature of I2C (I think this is mentioned in the tutorial, but I skipped most of it). The sensor works on 72Mhz and 36Mhz, but fails on 18Mhz and 9Mhz. My guess is that since I2C sends data in packets of 9 bits, the clock frequency has to be a multiple of 9 and greater than some unknown threshold, though I'm not 100% sure. You can read more about it in the pages linked below.
+The tutorial set the maximum clock frequency to `72Mhz`, and I did too. This works. Changing the maximum frequency can cause the sensor to fail to read data; I believe this is because of the synchronous nature of I2C (I think this is mentioned in the tutorial, but I skipped most of it). The sensor works on `72Mhz` and `36Mhz`, but fails on `18Mhz` and `9Mhz`. My guess is that since I2C sends data in packets of 9 bits, the clock frequency has to be a multiple of 9 and greater than some unknown threshold, though I'm not 100% sure. You can read more about it in the pages linked below.
 
 ## Resources
 [Tutorial](https://www.youtube.com/watch?v=jDhkfe2YG_o) for an explanation of the BME280 drivers, how it works, and the clock configuration
