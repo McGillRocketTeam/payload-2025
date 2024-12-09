@@ -1,0 +1,11 @@
+# Eclipse
+
+.metadata
+.settings
+[Rr]elease
+[Dd]ebug
+.launch
+
+# Apple
+
+.DS_Store
