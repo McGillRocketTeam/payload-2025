@@ -36,14 +36,36 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+#define FFT_SIZE 2048
+#define SAMPLE_RATE 1000.0f /* Hertz */
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+arm_rfft_fast_instance_f32 fft_handler;
 
+/**
+ * Buffer of sample points from signal to input to the FFT
+ */
+float fft_input[FFT_SIZE] = {0};
+/**
+ * FFT coefficients buffer.
+ * Contains FFT_SIZE / 2 coefficients with each even and odd element being the
+ * real and imaginary components of each coefficient, respectively.
+ */
+float fft_output[FFT_SIZE] = {0};
+/**
+ * Buffer containing the amplitudes of each coefficient.
+ */
+float fft_amplitudes[FFT_SIZE / 2] = {0};
+
+int fft_index = 0;
+uint8_t fft_ready = 0;
+
+float peak_amplitude;
+uint16_t peak_freq; /* Hertz */
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -51,7 +73,9 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
-
+float normalized_amplitude(float a, float b);
+uint16_t index_to_frequency(int i);
+float signal_function(int t);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -90,16 +114,81 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  arm_rfft_fast_init_f32(&fft_handler, FFT_SIZE);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  int counter = 0;
   while (1)
   {
+	/*
+	 * Get signal from source
+	 * For this example, the signal is simulated from a sum of sinusoidal functions
+	 * In the final code, this section would probably be put in a callback function
+	 * 	triggered by the sensor sampling timer
+	 */
+	float signal = signal_function(counter);
+	fft_input[fft_index] = signal;
+	fft_index++;
+
+	if (fft_index == FFT_SIZE)
+	{
+		/*
+		 * Perform Fast Fourier Transform
+		 * Cast the input and output buffers to (float *) to avoid a warning since
+		 * we already gave the FFT instance the buffer size when instantiating it and
+		 * it doesn't expect an array of a specific size.
+		 */
+		arm_rfft_fast_f32(&fft_handler, (float *) &fft_input, (float *) &fft_output, 0);
+		// Reset FFT tracking
+		fft_ready = 1;
+		fft_index = 0;
+	}
+
+	/*
+	 * Give a bit of visualization for the value of the signal
+	 * Turn LED on when the signal is positive and off when it's negative
+	 */
+	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, signal > 0 ? GPIO_PIN_SET : GPIO_PIN_RESET);
+	// Increase simulation step
+	counter++;
+
+	/*
+	 * Handle the FFT output data
+	 * This code can go in the main function as is
+	 */
+	if (fft_ready)
+	{
+		// Amplitude of zero frequency
+		fft_amplitudes[0] = normalized_amplitude(fft_output[0], fft_output[1]);
+		for (int i = 2; i < FFT_SIZE; i += 2)
+		{
+			// Amplitude of nonzero frequencies are twice the normalized amplitude of the FFT coefficients
+			fft_amplitudes[i / 2] = 2 * normalized_amplitude(fft_output[i], fft_output[i + 1]);
+		}
+
+		// Find peak frequency and its amplitude
+		peak_amplitude = 0;
+		int peak_index = 0;
+		for (int i = 0; i < FFT_SIZE / 2; i++)
+		{
+			if (fft_amplitudes[i] > peak_amplitude)
+			{
+				peak_amplitude = fft_amplitudes[i];
+				peak_index = i;
+			}
+		}
+		peak_freq = index_to_frequency(peak_index);
+
+		// Reset FFT ready flag
+		fft_ready = 0;
+	}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	// Delay 1ms to simulate sampling frequency of 1000 Hz
+	HAL_Delay(1);
   }
   /* USER CODE END 3 */
 }
@@ -222,7 +311,32 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+/**
+ * Converts the index of the list of amplitudes to a frequency in Hz,
+ * rounded to an integer.
+ */
+/**
+ * Find the amplitude of a complex number a + bi.
+ * @param a: The real part of the complex number
+ * @param b: The Imaginary part of the complex number.
+ */
+float normalized_amplitude(float a, float b)
+{
+	return sqrtf(a * a + b * b) / FFT_SIZE;
+}
 
+uint16_t index_to_frequency(int i)
+{
+	return (uint16_t) roundf(i * SAMPLE_RATE / FFT_SIZE);
+}
+
+float signal_function(int t_ms)
+{
+  float t_s = t_ms / SAMPLE_RATE;
+  float scaled_time = t_s * (2 * PI);
+  float value = sinf(scaled_time) + 2 * sinf(2 * scaled_time) + 3 * sinf(5 * scaled_time) + 0.5 * sinf(6 * scaled_time);
+  return value;
+}
 /* USER CODE END 4 */
 
 /**
