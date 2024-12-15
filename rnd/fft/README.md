@@ -20,13 +20,13 @@ $$A_0 = 0, \quad A_1 = 1, \quad A_2 = 1, \quad A_4 = 0, \quad A_5 = 3 \quad A_6 
 
 ---
 
-## The Discrete Fourier Transform (DFT)
+# The Discrete Fourier Transform (DFT)
 
 This section is going to have a lot of math, but if you just bear with me, we'll end up with one final equation for what we need.
 
 The Discrete Fourier Transform takes a finite number of data points (readings from sensors) which we sample from at a constant rate (using ADCs to convert the analog signal into a digital one and timers to ensure this happens at a constant rate). Since the data we are sampling consist fully of real numbers, this is also sometimes called the **Real DFT**.
 
-### Definition
+## Definition
 
 Let $\mathbf{x}$ be a buffer or array of $N$ data points which we want to perform Fourier analysis on. Let $f_s$ be the sampling frequency in Hertz. This means that $f$ times per second, we add a data point to a $\mathbf{x}$. The $k^\text{th}$ element of $\mathbf{x}$ be denoted by $x_k$, with $0 \le k \le N - 1$. 
 
@@ -60,7 +60,7 @@ In this case, $A$ is the amplitude of the coefficient and $\phi$ is its phase an
 
 In either interpretation, the coefficient accounts for both the amplitude and phase angle of the sinusoidal component of the signal. Even though the coefficients are complex, when fully added together in the inverse DFT the original, real signal can be recreated.
 
-### DFT Parameters
+## DFT Parameters
 
 This whole time, we've been concerning ourselves with sinusoids of frequency $\frac{k}{N}$, but this has implicitly been multiplied by the sampling frequency $f_s$ the whole time. So, the actual frequency measured by each coefficient $X_k$ is
 
@@ -78,17 +78,17 @@ Keeping $f_s$ constant, we see that since $k$ is a discrete value, so there are 
 
 > $f_0 = 0$ is called the **DC frequency** (short for direct current, since that also has a frequency of zero compared to AC), and its amplitude is a constant offset underneath the sinusoidal functions.
 
-#### Nyquist Frequency
+### Nyquist Frequency
 
 However, for reasons a bit beyond us right now, the **Real DFT**'s coefficients from $k = 0$ to $k = \frac{N}{2} - 1$ are the complex conjugates of the coefficients from $k = \frac{N}{2} + 1$ to $k = N$. This means that we don't actually get any useful information from the second half of the coefficients, so only the frequencies from $f_0 = 0$ to $f_{\frac{N}{2} - 1}$ have meaningful information attached to them.
 
 This means that the *actual* highest frequency we can measure with a sampling rate of $f_s$ is $\frac{f_s}{2}$. This is called the **Nyquist Frequency**.
 
-### Extracting Useful Information from the DFT
+## Extracting Useful Information from the DFT
 
 Now that we know all about the DFT (or at least, we know what kind of data the DFT returns once we throw all of our data in the funny little magical black box), we can actually get something useful from it. Our main goal in utilizing the FFT is to find the frequency and ampltiude of vibrations, so let's see how to find those. 
 
-#### Frequency
+### Frequency
 
 For a given $k$, we already know that 
 
@@ -96,7 +96,7 @@ $$f_k = f_s \frac{k}{N}.$$
 
 As discussed earlier, our choices of $f_s$ and $N$ determine the number and values of our $f_k$s, and these may not be integers. If you want to measure a specific frequency, you need to make sure that it is some integer multiple of $\frac{f_s}{N}$. *We* are not interested in measuring any specific frequency, so we can freely choose $f_s$ and $N$ based on other constraints and measure the frequencies that we get.
 
-#### Amplitude
+### Amplitude
 
 Earlier, I said that the DFT coefficient $X_k = a_k + b_k i$ is essentially the amplitudes of the $\sin$ and $\cos$ wave in the signal, but this is not quite true. 
 
