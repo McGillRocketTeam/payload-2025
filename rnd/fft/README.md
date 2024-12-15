@@ -12,7 +12,7 @@ In other words, the FFT takes in a relatively continuous signal (usually sourced
 
 For a signal given by 
 
-$f(t) = \sin\left(\frac{t}{2\pi}\right) + \sin\left(2\frac{t}{2\pi}\right) + 3\sin\left(5\frac{t}{2\pi}\right) + 0.5\sin\left(6\frac{t}{2\pi}\right)$,
+$f(t) = \sin\left(2\pi t\right) + \sin\left(2\cdot2\pi t\right) + 3\sin\left(5\cdot2\pi t\right) + 0.5\sin\left(6\cdot2\pi t\right)$,
 
 the output amplitudes over the frequencies $0-6$ would be
 
