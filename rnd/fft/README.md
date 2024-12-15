@@ -94,7 +94,7 @@ For a given $k$, we already know that
 
 $$f_k = f_s \frac{k}{N}.$$
 
-As discussed earlier, depending on our choices of $f_s$ and $N$, determine the number and values of our $f_k$s, and these may not be integers. If you want to measure a specific frequency, you need to make sure that it is some integer multiple of $\frac{f_s}{N}$. *We* are not interested in measuring any specific frequency, so we can freely choose $f_s$ and $N$ based on other constraints and measure the frequencies that that gives us.
+As discussed earlier, our choices of $f_s$ and $N$ determine the number and values of our $f_k$s, and these may not be integers. If you want to measure a specific frequency, you need to make sure that it is some integer multiple of $\frac{f_s}{N}$. *We* are not interested in measuring any specific frequency, so we can freely choose $f_s$ and $N$ based on other constraints and measure the frequencies that we get.
 
 #### Amplitude
 
