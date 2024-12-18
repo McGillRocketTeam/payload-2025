@@ -28,7 +28,7 @@ The Discrete Fourier Transform takes a finite number of data points (readings fr
 
 ## Definition
 
-Let $\mathbf{x}$ be a buffer or array of $N$ data points which we want to perform Fourier analysis on. Let $f_s$ be the sampling frequency in Hertz. This means that $f$ times per second, we add a data point to a $\mathbf{x}$. The $k^\text{th}$ element of $\mathbf{x}$ be denoted by $x_k$, with $0 \le k \le N - 1$. 
+Let $\mathbf{x}$ be a buffer or array of $N$ data points which we want to perform Fourier analysis on. Let $f_s$ be the sampling frequency in Hertz. This means that $f$ times per second, we add a data point to a $\mathbf{x}$. The $k^\text{th}$ element of $\mathbf{x}$ is denoted by $x_k$, with $0 \le k \le N - 1$. 
 
 The Discrete Fourier Transform, notated by $\mathcal{F}$, outputs $N$ **complex numbers** called **coefficients**. Let $\mathbf{X}$ be an array or buffer of these coefficients such that
 
@@ -123,7 +123,7 @@ For our purposes, we're mostly interested in finding the peak frequency, so find
 
 # Setup of ARM CMSIS DSP Library
 
-Enough theory, let's finally get into some coding. Implementing the FFT from scratch is not trivial (more math!), let alone making it run quickly, so we'll use an external library to do it for us.
+Enough theory, let's finally get into some coding (kind of). Implementing the FFT from scratch is not trivial (more math!), let alone making it run quickly, so we'll use an external library to do it for us.
 
 ## Terms
 
@@ -231,6 +231,133 @@ You should now be able to write
 #include "arm_math.h"
 ```
 and build the project without errors.
+
+# Programming
+
+## Code Overview
+
+First, we define a few global variables. We'll need a buffer for the input data points and its current index, and a buffer for the output coefficients. We'll also need a handler struct for the FFT instance as well as a boolean flag which indicates whether the buffer of data points is full and analysis is ready to be performed on it.
+
+Depending on what we want to do with our data we may want other variables. If we want to know the full spectrum amplitude, we can make a buffer containing the correct amplitudes for each $f_k$. If we just want to know the peak frequency and its amplitude, then we can make one variable to store the frequency and one for the amplitude.
+
+The code will have three major regions:
+
+1. Initialization
+
+This code simply initializes the FFT handler struct with relevant parameters so it can be passed in when calling the FFT function.
+
+2. Sampling
+
+This code is actually gets the data points to perform Fourier Analysis on. It is called periodically via STM32 timer interrupts to maintain a constant sampling frequency. 
+
+Every time this code is called, it gets the current value from whatever sensor it is in charge of sampling, and writes it into the input buffer at the current index, then increments the index. 
+
+If the input buffer is now full, it calls the FFT function which fills the output buffer with the DFT coefficients. It then sets the flag to true to signal that they are ready to be analyzed and resets the input buffer index to zero so it can start filling it up again the next time it's called.
+
+3. Analysis
+
+This code is in the main while loop, and once every loop it checks if the FFT flag is true. If so, then it performs the analysis.
+
+For a peak frequency detector, all it does is find the coefficient in the output buffer with the highest amplitude and calculate and store the correct frequency and amplitude for that coefficient.
+
+For a full spectrum detector, it fills the amplitude buffer with the correct amplitudes for each coefficient, and the correct frequency $f_k$ can be calculated later based the amplitude's index $k$.
+
+## Macros/Defines
+
+Since the DFT requires [parameters](#dft-parameters), we'll define them as macros. In the private macro section, define:
+
+1. Number of Samples ($N$/`FFT_SIZE`)
+
+The FFT algorithm runs fastest when the number of points is a power of two. For this library, the FFT size must be a power of 2.
+
+2. Sample Rate/Frequency ($f_s$/`SAMPLE_RATE`)
+
+This is in Hertz, and can be whatever frequency you want, as long as the frequency is constant. This can be achieved with timers and/or interrupts.
+
+---
+
+#### Example
+
+```c
+/* USER CODE BEGIN PM */
+#define FFT_SIZE 2048
+#define SAMPLE_RATE 1000.0f /* Hertz */
+/* USER CODE END PM */
+```
+
+---
+
+## Library Functions
+
+From the ARM CMSIS DSP libarary, we'll be using two functions and one struct. 
+
+All of these will begin with `arm_rfft_fast` and end with `f32`. `arm` is obvious, `rfft` stands for Real Fast Fourier Transform, and `fast` means do it fast please. `f32` is the type that we'll be using, 32-bit floating point numbers, which is usually the default for the `float` type in C.
+
+### `typedef struct arm_rfft_fast_instance_f32`
+
+This struct is used to store the data about the current Real FFT instance. We won't need to deal with it directly, we'll just pass it between the next two functions to keep track of the parameters.
+
+### `arm_rfft_fast_init_f32`
+
+```c
+arm_status arm_rfft_fast_init_f32 (
+   arm_rfft_fast_instance_f32 * S,
+   uint16_t fftLen);
+```
+
+This function is used to initialize the FFT instance (`arm_rfft_fast_instance_f32` struct). First, declare one, then pass its address as the first argument. The number of samples `FFT_SIZE` should be passed as the second argument.
+
+### `arm_rfft_fast_f32`
+
+```c
+void arm_rfft_fast_f32(
+  arm_rfft_fast_instance_f32 * S,
+  float32_t * p, float32_t * pOut,
+  uint8_t ifftFlag);
+```
+
+Like the previous function, the first argument should be the `arm_rfft_fast_instance_f32` declared earlier. The second argument `p` is the buffer of input data (of length `FFT_SIZE`) and the second argument `pOut` is the buffer for the output data to go in (also of length `FFT_SIZE`). The final argument is a single boolean; if true or `1`, it will compute the inverse DFT on the input data and put the corresponding signal into the output buffer. For our purposes, this should always be false or `0`.
+
+However, since the output of the DFT is a set of `FFT_SIZE` complex coefficients, how does it fit into a buffer of the same size as the input? Well, as seen in the section on the [Nyquist Frequency](#nyquist-frequency), only the first half of the coefficients contain useful information (for the Real DFT). So, the output buffer *actually* contains the real and complex values of those *first `FFT_SIZE / 2` coefficients*, alternating real and complex parts. The real part of the `i`th coefficient is found at index `2 * i` and the complex part found at `2 * i + 1 `.
+
+## Global Variables
+
+As described in the [code overview](#code-overview), here the global variables to put in the `/* USER CODE BEGIN PV */` section.
+
+```c
+/* USER CODE BEGIN PV */
+arm_rfft_fast_instance_f32 fft_handler;
+
+/**
+ * Buffer of sample points from signal to input to the FFT
+ */
+float fft_input[FFT_SIZE] = {0};
+/**
+ * FFT coefficients buffer.
+ * Contains FFT_SIZE / 2 coefficients with each even and odd element being the
+ * real and imaginary components of each coefficient, respectively.
+ */
+float fft_output[FFT_SIZE] = {0};
+/**
+ * Buffer containing the amplitudes of each coefficient.
+ */
+float fft_amplitudes[FFT_SIZE / 2] = {0};
+
+int fft_index = 0;
+uint8_t fft_ready = 0;
+
+float peak_amplitude;
+uint16_t peak_freq; /* Hertz */
+/* USER CODE END PV */
+```
+
+`fft_handler` is the struct used to store the parameters for the `arm_rfft_fast_*_f32` functions. 
+
+The `fft_input` and `fft_output` buffers are declared and initialized as zero, both must have the same length, `FFT_SIZE`.
+
+## Useful Functions
+
+## Simulated Examples
 
 # Resources
 
