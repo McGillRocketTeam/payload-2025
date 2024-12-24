@@ -1,5 +1,7 @@
 # Fast Fourier Transform (FFT)
 
+> **Note:** This document is best viewed in the VSCode Markdown preview. Some of the equations don't show up correctly using other Markdown Renderers.
+
 The FFT algorithm is used to perform the [discrete Fourier transform](https://en.wikipedia.org/wiki/Discrete_Fourier_transform) (DFT). This takes a *discrete* set of points *sampled from a continuous signal* in the *time domain* and turns it into a set of points in the *frequency domain* with associated amplitudes.
 
 ![Fourier Transform image](https://www.nti-audio.com/portals/0/pic/news/FFT-Time-Frequency-View-540.png)
@@ -353,7 +355,7 @@ uint16_t peak_freq; /* Hertz */
 
 `fft_handler` is the struct used to store the parameters for the `arm_rfft_fast_*_f32` functions. 
 
-The `fft_input` and `fft_output` buffers are declared and initialized as zero, both must have the same length, `FFT_SIZE`.
+The `fft_input` and `fft_output` buffers are declared and initialized as zero; both must have the same length, `FFT_SIZE`.
 
 ## Useful Functions
 

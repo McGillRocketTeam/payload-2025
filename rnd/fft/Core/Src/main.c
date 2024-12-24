@@ -312,10 +312,6 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 /**
- * Converts the index of the list of amplitudes to a frequency in Hz,
- * rounded to an integer.
- */
-/**
  * Find the amplitude of a complex number a + bi.
  * @param a: The real part of the complex number
  * @param b: The Imaginary part of the complex number.
@@ -325,6 +321,10 @@ float normalized_amplitude(float a, float b)
 	return sqrtf(a * a + b * b) / FFT_SIZE;
 }
 
+/**
+ * Converts the index of the list of amplitudes to a frequency in Hz,
+ * rounded to an integer.
+ */
 uint16_t index_to_frequency(int i)
 {
 	return (uint16_t) roundf(i * SAMPLE_RATE / FFT_SIZE);
