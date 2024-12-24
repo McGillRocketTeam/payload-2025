@@ -359,6 +359,43 @@ The `fft_input` and `fft_output` buffers are declared and initialized as zero; b
 
 ## Useful Functions
 
+### Index to Frequency
+
+```c
+/**
+ * Converts the index of the list of amplitudes to a frequency in Hz,
+ * rounded to an integer.
+ */
+uint16_t index_to_frequency(int i)
+{
+	return (uint16_t) roundf(i * SAMPLE_RATE / FFT_SIZE);
+}
+```
+
+This uses the relationship between frequencies found in the [DFT parameters section](#dft-parameters) to determine the frequency represented by the `i`th coefficient.
+
+It also rounds it to the nearest integer and returns it as a `uint16_t`. This is because for our purposes, finding the exact frequency and storing it as a `float` (32 bits) is a bit too big and unnecessarily precise. If you need the exact real number value, change the return type of the function and remove the cast and the round function. 
+
+> **Note:** If using this function with the raw FFT output buffer, since each coefficient takes up two slots, the values at indices `i` and `i + 1` are the values of the `i / 2`th coefficient. Therefore, if you're keeping track of the raw FFT output indices, you should call this function with `i / 2` as the argument.
+
+### Normalized Amplitude
+
+```c
+/**
+ * Find the amplitude of a complex number a + bi.
+ * @param a: The real part of the complex number
+ * @param b: The Imaginary part of the complex number.
+ */
+float normalized_amplitude(float a, float b)
+{
+	return sqrtf(a * a + b * b) / FFT_SIZE;
+}
+```
+
+This uses the values found for the actual amplitudes of the frequencies represented by each coefficient in the [Extracting Useful Information - Amplitude](#amplitude) section.
+
+> **Note:** This does not apply the additional scaling depending on the index/frequency. This function can be used with no altering of the output for the DC Frequency/index `0`, but the value needs to be multiplied by 2 for all the others. This is a small optimization.
+
 ## Simulated Examples
 
 # Resources
