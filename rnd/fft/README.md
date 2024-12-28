@@ -324,7 +324,7 @@ However, since the output of the DFT is a set of `FFT_SIZE` complex coefficients
 
 ## Global Variables
 
-As described in the [code overview](#code-overview), here the global variables to put in the `/* USER CODE BEGIN PV */` section.
+As described in the [code overview](#code-overview), here the global variables to put in the `USER CODE BEGIN PV` (private variables) section.
 
 ```c
 /* USER CODE BEGIN PV */
@@ -368,7 +368,7 @@ The `fft_input` and `fft_output` buffers are declared and initialized as zero; b
  */
 uint16_t index_to_frequency(int i)
 {
-	return (uint16_t) roundf(i * SAMPLE_RATE / FFT_SIZE);
+  return (uint16_t) roundf(i * SAMPLE_RATE / FFT_SIZE);
 }
 ```
 
@@ -388,7 +388,7 @@ It also rounds it to the nearest integer and returns it as a `uint16_t`. This is
  */
 float normalized_amplitude(float a, float b)
 {
-	return sqrtf(a * a + b * b) / FFT_SIZE;
+  return sqrtf(a * a + b * b) / FFT_SIZE;
 }
 ```
 
@@ -397,6 +397,158 @@ This uses the values found for the actual amplitudes of the frequencies represen
 > **Note:** This does not apply the additional scaling depending on the index/frequency. This function can be used with no altering of the output for the DC Frequency/index `0`, but the value needs to be multiplied by 2 for all the others. This is a small optimization.
 
 ## Simulated Examples
+
+This example uses the previously defined [global variables](#global-variables), and implements all three sections outlined in the [code overview](#code-overview). Keep in mind that for slightly different use cases, the code will be different.
+
+1. Initialization
+
+In the `USER CODE BEGIN 2` (initialization) section, use the `arm_rfft_fast_init_f32` function to initialize the FFT instance. Pass a pointer to the FFT handler and the FFT size.
+
+```c
+/* USER CODE BEGIN 2 */
+arm_rfft_fast_init_f32(&fft_handler, FFT_SIZE);
+/* USER CODE END 2 */
+```
+
+2. Sampling
+
+Instead of sampling from an actual signal, we'll be using a signal function which takes in the current time and gives an output based on mathematical functions. This makes it so we know what frequencies are already present in the signal for sure and it's easy to tweak and test with.
+
+```c
+float signal_function(int t_ms)
+{
+  float t_s = t_ms / SAMPLE_RATE;
+  float scaled_time = t_s * (2 * PI);
+  float value = sinf(scaled_time) + 2 * sinf(2 * scaled_time) + 3 * sinf(5 * scaled_time) + 0.5 * sinf(6 * scaled_time);
+  return value;
+}
+```
+
+This function takes as input the time in milliseconds, then converts it such that the sinsudoial functions have periods of integer frequencies measured in Hertz.
+
+In this example, all the sampling just happens in the `Infinite Loop`/`USER CODE BEGIN WHILE`/`USER CODE BEGIN 3` section. However this is just for simulation and testing purposes. **In the final code, all of this code should be put in a callback function triggered by a timer to maintain a constant polling rate**.
+
+```c
+/* Infinite loop */
+/* USER CODE BEGIN WHILE */
+int counter = 0;
+while (1)
+{
+    /*
+     * Get signal from source
+     * For this example, the signal is simulated from a sum of sinusoidal functions
+     * In the final code, this section would probably be put in a callback function
+     * 	triggered by the sensor sampling timer
+     */
+    float signal = signal_function(counter);
+    fft_input[fft_index] = signal;
+    fft_index++;
+
+    if (fft_index == FFT_SIZE)
+    {
+        /*
+         * Perform Fast Fourier Transform
+         * Cast the input and output buffers to (float *) to avoid a warning since
+         * we already gave the FFT instance the buffer size when instantiating it and
+         * it doesn't expect an array of a specific size.
+         */
+        arm_rfft_fast_f32(&fft_handler, (float *) &fft_input, (float *) &fft_output, 0);
+        // Reset FFT tracking
+        fft_ready = 1;
+        fft_index = 0;
+    }
+
+    /*
+      * Give a bit of visualization for the value of the signal
+      * Turn LED on when the signal is positive and off when it's negative
+      */
+     HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, signal > 0 ? GPIO_PIN_SET : GPIO_PIN_RESET);
+     // Increase simulation step
+     counter++;
+
+     // Other things that happen in the main loop
+     ... 
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
+    // Delay 1ms to simulate sampling frequency of 1000 Hz
+    HAL_Delay(1);
+}
+/* USER CODE END 3 */
+```
+
+First we initialize a counter variable to act as a simulated timer for input to the signal function.
+
+We then get the signal from the simulated signal function, append the value to the array, and increment the FFT input array index.
+
+Next, we check if the FFT input array is full. If so, we perform the FFT using the `arm_rfft_fast_f32` function. We then set the `fft_ready` flag to `true`/`1` to signal that the output array has been updated and is ready to be analyzed and set the `fft_index` back to `0`.
+
+Next is just a bit of visualization to give a little idea just what the simulated signal looks like to the tester, where we set the LED to be on if the simulated signal is positive and off if it's negative. This is entirely unnecessary in the final code.
+
+We then increase the counter to step forward the simulated signal by one millisecond, and after the rest of the code in the main loop is done running, we delay by `1` millisecond to simulate a sample rate of `1000` Hertz.
+
+3. Analysis
+
+This code actually belongs in the main loop and is not just there for simulation and testing purposes. 
+
+```c
+/* Infinite loop */
+/* USER CODE BEGIN WHILE */
+while (1)
+{
+    // Other things that happen in the main loop
+    ...
+
+    /*
+     * Handle the FFT output data
+     * This code can go in the main function as is
+     */
+    if (fft_ready)
+    {
+        // Amplitude of zero frequency
+        fft_amplitudes[0] = normalized_amplitude(fft_output[0], fft_output[1]);
+        for (int i = 2; i < FFT_SIZE; i += 2)
+        {
+            // Amplitude of nonzero frequencies are twice the normalized amplitude of the FFT coefficients
+            fft_amplitudes[i / 2] = 2 * normalized_amplitude(fft_output[i], fft_output[i + 1]);
+        }
+
+        // Find peak frequency and its amplitude
+        peak_amplitude = 0;
+        int peak_index = 0;
+        for (int i = 0; i < FFT_SIZE / 2; i++)
+        {
+            if (fft_amplitudes[i] > peak_amplitude)
+            {
+                peak_amplitude = fft_amplitudes[i];
+                peak_index = i;
+            }
+        }
+        peak_freq = index_to_frequency(peak_index);
+
+        // Reset FFT ready flag
+        fft_ready = 0;
+    }
+
+    // Other things that happen in the main loop
+    ...
+
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
+}
+/* USER CODE END 3 */
+```
+
+Every time through the loop, the `fft_ready` flag is checked. If it is set to `true`/`1`, then it proceeds with the analysis of the FFT output array. At the end of the analysis, it resets the `fft_ready` flag back to `false`/`0`.
+
+The analysis section contains two examples: first, a full spectrum analysis and second a simple peak detector.
+
+The first section uses the [`normalized_amplitude`](#normalized-amplitude) function on every FFT coefficient to create an array of amplitudes. 
+
+The second section loops over this array to find the peak (highest) amplitude and its index. Once the entire array has been checked, it uses the [`index_to_frequency`](#index-to-frequency) function to find the frequency of that amplitude.
+
+> **Note:** For a simple peak detector, the `normalized_amplitude` function should not be used. This is because the square root function is relatively expensive and does not need to be used on every coefficient to find the maximum amplitude. Instead, the two sections should be combined and the `fft_amplitudes` array should be forgone entirely; simply compute the square of the normalized amplitude (the value before being square rooted) and keep track of the largest value of that. Then, at the end, use the `normalized_amplitude` function once, only on the peak frequency, to get its accurate amplitude.
 
 # Resources
 
