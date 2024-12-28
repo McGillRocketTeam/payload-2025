@@ -334,7 +334,7 @@ float signal_function(int t_ms)
 {
   float t_s = t_ms / SAMPLE_RATE;
   float scaled_time = t_s * (2 * PI);
-  float value = sinf(scaled_time) + 2 * sinf(2 * scaled_time) + 3 * sinf(5 * scaled_time) + 0.5 * sinf(6 * scaled_time);
+  float value = cosf(scaled_time) + 2 * sinf(2 * scaled_time) + 3 * sinf(3 * scaled_time) + 4 * cosf(3 * scaled_time) + 3 * sinf(5 * scaled_time) + 0.5 * sinf(6 * scaled_time);
   return value;
 }
 /* USER CODE END 4 */

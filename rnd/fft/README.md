@@ -14,11 +14,13 @@ In other words, the FFT allows us to input a relatively continuous signal (usual
 
 For a signal given by 
 
-$$f(t) = \sin\left(2\pi t\right) + \sin\left(2\cdot2\pi t\right) + 3\sin\left(5\cdot2\pi t\right) + 0.5\sin\left(6\cdot2\pi t\right)$$
+$$f(t) = \cos\left(2\pi t\right) + \sin\left(2 \cdot 2\pi t\right) + 3\sin\left(3 \cdot 2\pi t \right) + 4\cos\left(3 \cdot 2\pi t \right) + 3\sin\left(5 \cdot 2\pi t\right) + 0.5\sin\left(6 \cdot 2\pi t\right)$$
 
 the output amplitudes over the frequencies $0-6$ would be
 
-$$A_0 = 0, \quad A_1 = 1, \quad A_2 = 1, \quad A_4 = 0, \quad A_5 = 3 \quad A_6 = 0.5$$
+$$A_0 = 0, \quad A_1 = 1, \quad A_2 = 1, \quad A_3 = 5, \quad A_4 = 0, \quad A_5 = 3 \quad A_6 = 0.5$$
+
+A graph of this signal can be seen [here](https://www.desmos.com/calculator/gx5dpzjwd9).
 
 ---
 
@@ -419,12 +421,12 @@ float signal_function(int t_ms)
 {
   float t_s = t_ms / SAMPLE_RATE;
   float scaled_time = t_s * (2 * PI);
-  float value = sinf(scaled_time) + 2 * sinf(2 * scaled_time) + 3 * sinf(5 * scaled_time) + 0.5 * sinf(6 * scaled_time);
+  float value = cosf(scaled_time) + 2 * sinf(2 * scaled_time) + 3 * sinf(3 * scaled_time) + 4 * cosf(3 * scaled_time) + 3 * sinf(5 * scaled_time) + 0.5 * sinf(6 * scaled_time);
   return value;
 }
 ```
 
-This function takes as input the time in milliseconds, then converts it such that the sinsudoial functions have periods of integer frequencies measured in Hertz.
+This function takes as input the time in milliseconds, then converts it such that the sinsudoial functions have periods of integer frequencies measured in Hertz. The signal that it outputs is the same one given in [the first example](#example) (graph can be found [here](https://www.desmos.com/calculator/gx5dpzjwd9)).
 
 In this example, all the sampling just happens in the `Infinite Loop`/`USER CODE BEGIN WHILE`/`USER CODE BEGIN 3` section. However this is just for simulation and testing purposes. **In the final code, all of this code should be put in a callback function triggered by a timer to maintain a constant polling rate**.
 
@@ -549,6 +551,26 @@ The first section uses the [`normalized_amplitude`](#normalized-amplitude) funct
 The second section loops over this array to find the peak (highest) amplitude and its index. Once the entire array has been checked, it uses the [`index_to_frequency`](#index-to-frequency) function to find the frequency of that amplitude.
 
 > **Note:** For a simple peak detector, the `normalized_amplitude` function should not be used. This is because the square root function is relatively expensive and does not need to be used on every coefficient to find the maximum amplitude. Instead, the two sections should be combined and the `fft_amplitudes` array should be forgone entirely; simply compute the square of the normalized amplitude (the value before being square rooted) and keep track of the largest value of that. Then, at the end, use the `normalized_amplitude` function once, only on the peak frequency, to get its accurate amplitude.
+
+## Observing Results with Debugging
+
+### Peak Detection
+
+To see if peak detection is working correctly, we're going to use live expressions. Since `peak_frequency` and `peak_amplitude` are global variables, they can be read from anywhere, all the time.
+
+When debugging, navigate to the top right panel, and click the tab labeled `Live Expressions` (the icon is spiky glasses) (make sure you chose `Live Expressions` instead of just normal `Expressions`).
+
+Click *`+ Add new expression`* and type in `peak_frequency`  and `peak_amplitude`. Depending of your sampling frequency and FFT size, you will see these values update periodically every few seconds. 
+
+The values may vary a bit even with a pure signal, since the exact data point that the input array starts at will be different evey time. For this example, the peak frequency should be about `3` and the peak amplitude should be about `5.0`.
+
+### Full Spectrum
+
+To see the results of the full spectrum analysis of the last FFT outputs, pause the debugging by clicking the `Suspend` button which looks like a pause section in the debugging section of the top bar.
+
+It will pause execution in a pretty random location, but that won't matter. Navigate to where the `fft_amplitudes` array is defined and hover over it. This will allow you to see every amplitude in the array and its index. 
+
+Keep in mind that each index is not a frequency in Hertz, but you will have to mentally or manually transform the index via the [`index_to_frequency`](#index-to-frequency) function to find the actual frequency that it represents.
 
 # Resources
 
