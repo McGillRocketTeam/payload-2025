@@ -10,6 +10,9 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
+#include "stm32f4xx_hal_can.h"
+
+#define N_MESSAGES 3
 
 // CAN Message structures
 struct CAN_msg_1_s
@@ -56,20 +59,13 @@ union CAN_msg_3_u
     uint8_t bytes[8];
 };
 
-enum command
+enum command_type
 {
     SCRUB,
     TOGGLE_SAMPLING,
     TOGGLE_COOLER,
     LANDED,
-    SET_TEMP_1,
-    SET_TEMP_2,
-    SET_TEMP_3,
-    SET_TEMP_4,
-    SET_TEMP_5,
-    SET_TEMP_6,
-    SET_TEMP_7,
-    SET_TEMP_8,
+    SET_TEMP,
     // Add more commands as needed. There will be more commands in 2025
     INVALID = -1
 };
@@ -86,5 +82,30 @@ enum temperature
     TEMP_7 = 30,
     TEMP_8 = 37
 };
+
+union command_data {
+    bool on;
+    temperature temp;
+};
+
+struct command
+{
+    command_type type;
+    command_data data;
+};
+
+struct CAN_bus_handler {
+    CAN_TxHeaderTypeDef Tx_headers[N_MESSAGES];
+    uint32_t Tx_mailbox;
+    CAN_RxHeaderTypeDef Rx_header;
+    uint8_t RxData[8];
+    bool command_ready;
+};
+
+bool CAN_bus_init(CAN_bus_handler *c);
+
+bool CAN_bus_receieve(CAN_bus_handler *c, CAN_HandleTypeDef *hcan1);
+
+command CAN_bus_parse_command(CAN_bus_handler *c);
 
 #endif // __CAN_BUS_H
