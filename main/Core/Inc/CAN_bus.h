@@ -62,10 +62,19 @@ enum command
     TOGGLE_SAMPLING,
     TOGGLE_COOLER,
     LANDED,
-    INVALID = -1
+    SET_TEMP_1,
+    SET_TEMP_2,
+    SET_TEMP_3,
+    SET_TEMP_4,
+    SET_TEMP_5,
+    SET_TEMP_6,
+    SET_TEMP_7,
+    SET_TEMP_8,
     // Add more commands as needed. There will be more commands in 2025
+    INVALID = -1
 };
 
+// Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
 enum temperature
 {
     TEMP_1 = 1,
@@ -76,6 +85,6 @@ enum temperature
     TEMP_6 = 25,
     TEMP_7 = 30,
     TEMP_8 = 37
-}; // Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
+};
 
 #endif // __CAN_BUS_H
