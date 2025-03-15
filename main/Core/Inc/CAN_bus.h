@@ -56,14 +56,26 @@ union CAN_msg_3_u
     uint8_t bytes[8];
 };
 
-enum payload_command
+enum command
 {
-    PAYLOAD_SCRUB,
-    PAYLOAD_START_SAMPLING,
-    PAYLOAD_STOP_SAMPLING,
-    PAYLOAD_LANDED,
-    PAYLOAD_INVALID = -1
+    SCRUB,
+    TOGGLE_SAMPLING,
+    TOGGLE_COOLER,
+    LANDED,
+    INVALID = -1
     // Add more commands as needed. There will be more commands in 2025
 };
+
+enum temperature
+{
+    TEMP_1 = 1,
+    TEMP_2 = 5,
+    TEMP_3 = 10,
+    TEMP_4 = 15,
+    TEMP_5 = 20,
+    TEMP_6 = 25,
+    TEMP_7 = 30,
+    TEMP_8 = 37
+}; // Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
 
 #endif // __CAN_BUS_H
