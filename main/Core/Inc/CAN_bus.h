@@ -1,6 +1,6 @@
 /**
  * @file CAN_bus.h
- * @author julien
+ * @author julien, Alex
  * @date 2025-03-15
  * @brief CAN bus message structures and unions. Unions are the same structures but available as an 64bit array.
  */
@@ -54,6 +54,16 @@ union CAN_msg_3_u
 {
     struct CAN_msg_3_s msg;
     uint8_t bytes[8];
+};
+
+enum payload_command
+{
+    PAYLOAD_SCRUB,
+    PAYLOAD_START_SAMPLING,
+    PAYLOAD_STOP_SAMPLING,
+    PAYLOAD_LANDED,
+    PAYLOAD_INVALID = -1
+    // Add more commands as needed. There will be more commands in 2025
 };
 
 #endif // __CAN_BUS_H
