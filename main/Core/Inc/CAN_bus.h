@@ -58,10 +58,10 @@ union CAN_msg_3_u
 
 enum command
 {
-    SCRUB,
-    TOGGLE_SAMPLING,
-    TOGGLE_COOLER,
-    LANDED,
+    SCRUB = 0x05, 
+    TOGGLE_SAMPLING = 0x11,
+    TOGGLE_COOLER, //TO BE ADDED
+    LANDED = 0x17,
     INVALID = -1
     // Add more commands as needed. There will be more commands in 2025
 };
