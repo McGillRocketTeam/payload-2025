@@ -1,11 +1,12 @@
 /**
  * @file CAN_bus.h
- * @author julien, Alex
+ * @author julien, Alex, Akash
  * @date 2025-03-15
  * @brief CAN bus message structures and unions. Unions are the same structures but available as an 64bit array.
  */
 #ifndef __CAN_BUS_H
 #define __CAN_BUS_H
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -63,10 +64,10 @@ enum command_type
 {
     SCRUB = 0x05,
     TOGGLE_SAMPLING = 0x11,
-    TOGGLE_COOLER, // TO BE ADDED
+    TOGGLE_COOLER, // TODO: Add after discussion with AV
+    SET_TEMP, // TODO: Add after discussion with AV
     LANDED = 0x17,
     INVALID = -1
-    // Add more commands as needed. There will be more commands in 2025
 };
 
 // Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
