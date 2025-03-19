@@ -65,7 +65,7 @@ enum command_type
     SCRUB = 0x05,
     TOGGLE_SAMPLING = 0x11,
     TOGGLE_COOLER, // TODO: Add after discussion with AV
-    SET_TEMP, // TODO: Add after discussion with AV
+    SET_TEMP, // TODO: Add after discussion with AV, this may end up being one command or multiple commands
     LANDED = 0x17,
     INVALID = -1
 };
