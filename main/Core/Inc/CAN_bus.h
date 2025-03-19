@@ -61,9 +61,9 @@ union CAN_msg_3_u
 
 enum command_type
 {
-    SCRUB = 0x05, 
+    SCRUB = 0x05,
     TOGGLE_SAMPLING = 0x11,
-    TOGGLE_COOLER, //TO BE ADDED
+    TOGGLE_COOLER, // TO BE ADDED
     LANDED = 0x17,
     INVALID = -1
     // Add more commands as needed. There will be more commands in 2025
@@ -82,7 +82,8 @@ enum temperature
     TEMP_8 = 37
 };
 
-union command_data {
+union command_data
+{
     bool on;
     temperature temp;
 };
@@ -93,7 +94,8 @@ struct command
     command_data data;
 };
 
-struct CAN_bus_handler {
+struct CAN_bus_handler
+{
     CAN_TxHeaderTypeDef Tx_headers[N_MESSAGES];
     uint32_t Tx_mailbox;
     CAN_RxHeaderTypeDef Rx_header;
