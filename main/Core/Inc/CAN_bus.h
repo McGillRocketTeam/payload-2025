@@ -104,7 +104,7 @@ struct CAN_bus_handler
     bool command_ready;
 };
 
-bool CAN_bus_init(CAN_bus_handler *c);
+bool CAN_bus_init(CAN_bus_handler *c, uint32_t base_id);
 
 bool CAN_bus_receieve(CAN_bus_handler *c, CAN_HandleTypeDef *hcan1);
 
