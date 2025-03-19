@@ -58,20 +58,12 @@ union CAN_msg_3_u
 
 enum command
 {
-    SCRUB,
-    TOGGLE_SAMPLING,
-    TOGGLE_COOLER,
-    LANDED,
-    SET_TEMP_1,
-    SET_TEMP_2,
-    SET_TEMP_3,
-    SET_TEMP_4,
-    SET_TEMP_5,
-    SET_TEMP_6,
-    SET_TEMP_7,
-    SET_TEMP_8,
-    // Add more commands as needed. There will be more commands in 2025
+    SCRUB = 0x05, 
+    TOGGLE_SAMPLING = 0x11,
+    TOGGLE_COOLER, //TO BE ADDED
+    LANDED = 0x17,
     INVALID = -1
+    // Add more commands as needed. There will be more commands in 2025
 };
 
 // Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
