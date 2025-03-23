@@ -29,22 +29,24 @@ command CAN_bus_parse_command(CAN_bus_handler *c)
     {
         switch (c->RxHeader.StdId)
         {
-        case SCRUB:
-            com.type = SCRUB;
-        case TOGGLE_SAMPLING:
-            com.type = TOGGLE_SAMPLING;
-            data.on = c->RxData[0];
-        case TOGGLE_COOLER:
-            com.type = TOGGLE_COOLER;
-            data.on = c->RxData[0];
-        case LANDED:
-            com.type = LANDED;
-            data.on = c->RxData[0];
-        case SET_TEMP:
-            com.type = SET_TEMP;
-            // TODO: write set temperature after discussion with AV
-        default:
-            return null;
+            case RESET:
+                com.type = RESET;
+            case TOGGLE_SAMPLING:
+                com.type = TOGGLE_SAMPLING;
+                data.on = c->RxData[0];
+            case TOGGLE_COOLER:
+                com.type = TOGGLE_COOLER;
+                data.on = c->RxData[0];
+            case LANDED:
+                com.type = LANDED;
+                data.on = c->RxData[0];
+            case SET_TEMPERATURE:
+                com.type = SET_TEMPERATURE;
+                if (c->RxData[0]<N_TEMPERATURES){
+                    data.temp = temperatures[c->RxData[0]];
+                }
+            default:
+                com.type=INVALID;
         }
         com.data = data;
         return com;
