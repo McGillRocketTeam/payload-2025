@@ -1,19 +1,15 @@
 /**
  * @file CAN_bus.h
- * @author julien, Alex, Akash
+ * @author julien, Alex
  * @date 2025-03-15
  * @brief CAN bus message structures and unions. Unions are the same structures but available as an 64bit array.
  */
 #ifndef __CAN_BUS_H
 #define __CAN_BUS_H
-
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
-#include "stm32f4xx_hal_can.h"
-
-#define N_MESSAGES 3
 
 // CAN Message structures
 struct CAN_msg_1_s
@@ -60,17 +56,17 @@ union CAN_msg_3_u
     uint8_t bytes[8];
 };
 
-enum command_type
+enum command
 {
-    SCRUB = 0x05,
-    TOGGLE_SAMPLING = 0x11,
-    TOGGLE_COOLER, // TODO: Add after discussion with AV
-    SET_TEMP, // TODO: Add after discussion with AV, this may end up being one command or multiple commands
+    RESET = 0x05,
+    TOGGLE_SAMPLING = 0x11, //toggle payload sampling
+    TOGGLE_COOLER = 0x18, //toggle peltier cooler
     LANDED = 0x17,
+    SET_TEMPERATURE = 0x19, //set target temperature. There are 8 possible temperature values. Encoded as 0-7.
     INVALID = -1
+    // Add more commands as needed. There will be more commands in 2025
 };
 
-// Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
 enum temperature
 {
     TEMP_1 = 1,
@@ -81,33 +77,6 @@ enum temperature
     TEMP_6 = 25,
     TEMP_7 = 30,
     TEMP_8 = 37
-};
-
-union command_data
-{
-    bool on;
-    temperature temp;
-};
-
-struct command
-{
-    command_type type;
-    command_data data;
-};
-
-struct CAN_bus_handler
-{
-    CAN_TxHeaderTypeDef Tx_headers[N_MESSAGES];
-    uint32_t Tx_mailbox;
-    CAN_RxHeaderTypeDef Rx_header;
-    uint8_t RxData[8];
-    bool command_ready;
-};
-
-bool CAN_bus_init(CAN_bus_handler *c);
-
-bool CAN_bus_receieve(CAN_bus_handler *c, CAN_HandleTypeDef *hcan1);
-
-command CAN_bus_parse_command(CAN_bus_handler *c);
+}; // Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
 
 #endif // __CAN_BUS_H
