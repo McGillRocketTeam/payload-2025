@@ -62,19 +62,17 @@ union CAN_msg_3_u
 
 enum command_type
 {
-    SCRUB = 0x05,
-    TOGGLE_SAMPLING = 0x11,
-    TOGGLE_COOLER, // TODO: Add after discussion with AV
-    SET_TEMP, // TODO: Add after discussion with AV, this may end up being one command or multiple commands
+    RESET = 0x05, // Reset payload
+    TOGGLE_SAMPLING = 0x11, // Toggle payload sampling
+    TOGGLE_COOLER = 0x18, // Toggle peltier cooler
     LANDED = 0x17,
+    SET_TEMPERATURE = 0x19, // Set target temperature. There are 8 possible temperature values. Encoded as 0-7.
     INVALID = -1
 };
 
 // Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
-typedef float temperature;
-
 #define N_TEMPERATURES
-
+typedef float temperature;
 temperature temperatures[N_TEMPERATURES] = {1, 5, 10, 15, 20, 25, 30, 37};
 
 union command_data
@@ -85,8 +83,8 @@ union command_data
 
 struct command
 {
-    command_type type;
-    command_data data;
+    enum command_type type;
+    union command_data data;
 };
 
 struct CAN_bus_handler
