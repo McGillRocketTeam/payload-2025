@@ -62,17 +62,18 @@ union CAN_msg_3_u
 
 enum command_type
 {
-    RESET = 0x05, // Reset payload
+    RESET_PAYLOAD = 0x05, // Reset payload
     TOGGLE_SAMPLING = 0x11, // Toggle payload sampling
     TOGGLE_COOLER = 0x18, // Toggle peltier cooler
     LANDED = 0x17,
     SET_TEMPERATURE = 0x19, // Set target temperature. There are 8 possible temperature values. Encoded as 0-7.
-    INVALID = -1
+    NONE = -1,
+    INVALID = -2
 };
 
-// Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
-#define N_TEMPERATURES
+#define N_TEMPERATURES 8
 typedef float temperature;
+// Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
 temperature temperatures[N_TEMPERATURES] = {1, 5, 10, 15, 20, 25, 30, 37};
 
 union command_data
@@ -92,14 +93,31 @@ struct CAN_bus_handler
     CAN_TxHeaderTypeDef Tx_headers[N_MESSAGES];
     uint32_t Tx_mailbox;
     CAN_RxHeaderTypeDef Rx_header;
-    uint8_t RxData[8];
+    uint8_t Rx_data[8];
     bool command_ready;
 };
 
-bool CAN_bus_init(CAN_bus_handler *c, uint32_t base_id);
+bool CAN_bus_init(struct CAN_bus_handler *c, uint32_t base_id);
 
-bool CAN_bus_receieve(CAN_bus_handler *c, CAN_HandleTypeDef *hcan1);
+bool CAN_bus_receieve(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan1);
 
-command CAN_bus_parse_command(CAN_bus_handler *c);
+struct command CAN_bus_parse_command(struct CAN_bus_handler *c);
+
+bool CAN_bus_send(
+    struct CAN_bus_handler *c,
+    bool ok,
+    bool sampling_state,
+    bool temperature_control_state,
+    uint8_t target_temp,
+    uint16_t current_temp,
+    uint8_t battery_voltage,
+    uint16_t frquency_x,
+    uint16_t frquency_y,
+    uint16_t frquency_z,
+    uint16_t amplitude_x,
+    uint16_t amplitude_y,
+    uint16_t amplitude_z,
+    uint32_t time_elapsed
+);
 
 #endif // __CAN_BUS_H
