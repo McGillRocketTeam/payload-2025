@@ -71,17 +71,9 @@ enum command_type
 };
 
 // Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
-enum temperature
-{
-    TEMP_1 = 1,
-    TEMP_2 = 5,
-    TEMP_3 = 10,
-    TEMP_4 = 15,
-    TEMP_5 = 20,
-    TEMP_6 = 25,
-    TEMP_7 = 30,
-    TEMP_8 = 37
-};
+typedef float temperature;
+
+temperature temperatures[8] = {1, 5, 10, 15, 20, 25, 30, 37};
 
 union command_data
 {
