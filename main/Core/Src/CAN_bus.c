@@ -49,6 +49,10 @@ struct command CAN_bus_parse_command(struct CAN_bus_handler *c)
             com.type = INVALID;
         }
     }
+    else
+    {
+        com.type = NONE;
+    }
     com.data = data;
     return com;
 }
