@@ -11,7 +11,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
-#include "stm32f4xx_hal_can.h"
+#include "stm32f4xx.h"
 
 #define N_MESSAGES 3
 
