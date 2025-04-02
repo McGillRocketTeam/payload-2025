@@ -105,6 +105,7 @@ struct command CAN_bus_parse_command(struct CAN_bus_handler *c);
 
 bool CAN_bus_send(
     struct CAN_bus_handler *c,
+    CAN_HandleTypeDef *hcan1,
     bool ok,
     bool sampling_state,
     bool temperature_control_state,
