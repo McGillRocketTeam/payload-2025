@@ -9,9 +9,9 @@
 #ifndef __ENABLED_H
 #define __ENABLED_H
 
-// Comment out a line to not define and therefore disable a feature
-#define CAN_BUS
-#define SD_CARD
-#define SERIAL_PRINT
+// Set to 0 to disable a feature
+#define CAN_BUS_ENABLED 1
+#define SD_CARD_ENABLED 1
+#define SERIAL_MONITOR_ENABLED 1
 
 #endif
