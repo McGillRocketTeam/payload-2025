@@ -104,6 +104,7 @@ PUTCHAR_PROTOTYPE
   */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -143,6 +144,7 @@ int main(void)
   while (1)
   {
 	  printf("Time: %ld\r\n", HAL_GetTick());
+	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 	  HAL_Delay(1000);
     /* USER CODE END WHILE */
 
