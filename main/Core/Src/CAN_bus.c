@@ -1,7 +1,9 @@
 #include "CAN_bus.h"
+#include "enabled.h"
 
 bool CAN_bus_init(struct CAN_bus_handler *c, uint32_t base_id)
 {
+#if CAN_BUS_ENABLED
     for (int i = 0; i < N_MESSAGES; i++)
     {
         c->Tx_headers[i].DLC = 8;
@@ -12,17 +14,25 @@ bool CAN_bus_init(struct CAN_bus_handler *c, uint32_t base_id)
         c->Tx_headers[i].TransmitGlobalTime = DISABLE;
     }
     return true;
+#else
+    return false;
+#endif
 }
 
 bool CAN_bus_receieve(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan1)
 {
-    HAL_StatusTypeDef status=HAL_CAN_GetRxMessage(hcan1, CAN_RX_FIFO0, &(c->Rx_header), c->Rx_data);
+#if CAN_BUS_ENABLED
+    HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(hcan1, CAN_RX_FIFO0, &(c->Rx_header), c->Rx_data);
     c->command_ready = true;
-    return status==HAL_OK;
+    return status == HAL_OK;
+#else
+    return false;
+#endif
 }
 
 struct command CAN_bus_parse_command(struct CAN_bus_handler *c)
 {
+#if CAN_BUS_ENABLED
     struct command com;
     union command_data data;
     if (c->command_ready)
@@ -55,6 +65,10 @@ struct command CAN_bus_parse_command(struct CAN_bus_handler *c)
     }
     com.data = data;
     return com;
+#else 
+    struct command empty;
+    return empty;
+#endif
 }
 
 bool CAN_bus_send(
@@ -74,6 +88,7 @@ bool CAN_bus_send(
     uint16_t amplitude_z,
     uint32_t time_elapsed)
 {
+#if CAN_BUS_ENABLED
     struct CAN_msg_1_s msg1;
     msg1.battery_voltage = battery_voltage;
     msg1.current_temp = current_temp;
@@ -111,4 +126,7 @@ bool CAN_bus_send(
     status3 = HAL_CAN_AddTxMessage(hcan1, &((c->Tx_headers)[2]), msg3_u.bytes, &(c->Tx_mailbox));
 
     return !(status1 != HAL_OK || status2 != HAL_OK || status3 != HAL_OK);
+#else
+    return false
+#endif
 }
