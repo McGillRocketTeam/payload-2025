@@ -5,7 +5,11 @@
  *  Author: Julien
  *
  */
-TIM_HandleTypeDef *htim;  // CHosen Timer
+
+#include "peltier.h"
+
+/*  Public Variables */
+TIM_HandleTypeDef *htim;  // Chosen Timer
 uint32_t channel; // Chosen Channel (1-4)
 int counter_period; // htim.Init.Period in main.c
 
