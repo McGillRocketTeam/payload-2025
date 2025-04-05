@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "enabled.h"
+#include "BME280_STM32.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,7 +47,7 @@ ADC_HandleTypeDef hadc3;
 
 CAN_HandleTypeDef hcan1;
 
-I2C_HandleTypeDef hi2c3;
+I2C_HandleTypeDef hi2c3; //DONT FORGET
 
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
@@ -54,7 +55,7 @@ TIM_HandleTypeDef htim4;
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
-
+float Temperature, Pressure, Humidity;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -137,6 +138,7 @@ int main(void)
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
   printf("Beginning initialization...\r\n");
+  BME280_Config(OSRS_2, OSRS_16, OSRS_1, MODE_NORMAL, T_SB_0p5, IIR_16);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -145,6 +147,10 @@ int main(void)
   {
 	  printf("Time: %ld\r\n", HAL_GetTick());
 	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+
+	  BME280_Measure();
+	  printf("%d\n\r", (int) (Temperature * 10));
+
 	  HAL_Delay(1000);
     /* USER CODE END WHILE */
 

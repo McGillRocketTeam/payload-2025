@@ -20,8 +20,8 @@
 
 #include "BME280_STM32.h"
 
-extern I2C_HandleTypeDef hi2c1;
-#define BME280_I2C &hi2c1
+extern I2C_HandleTypeDef hi2c3;
+#define BME280_I2C &hi2c3
 
 //#define SUPPORT_64BIT 1
 #define SUPPORT_32BIT 1
@@ -164,7 +164,7 @@ int BMEReadRaw(void)
 	uint8_t RawData[8];
 
 	// Check the chip ID before reading
-	HAL_I2C_Mem_Read(&hi2c1, BME280_ADDRESS, ID_REG, 1, &chipID, 1, 1000);
+	HAL_I2C_Mem_Read(&hi2c3, BME280_ADDRESS, ID_REG, 1, &chipID, 1, 1000);
 
 	if (chipID == 0x60)
 	{
