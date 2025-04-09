@@ -10,7 +10,7 @@
 /* Global Variables */
 struct peltier_s peltier_values;
 
-void Peltier_Init(TIM_HandleTypeDef *timer, TIM_HandleTypeDef *timer_ref, uint32_t ch, uint32_t ch_ref)
+void Peltier_Init(TIM_HandleTypeDef timer, TIM_HandleTypeDef timer_ref, uint32_t ch, uint32_t ch_ref)
 {
 	/*
 	 * @brief Initializes PWM on desire TIM Channel and on reference TIM Channel
