@@ -7,32 +7,33 @@
  */
 
 #include "peltier.h"
+/* Global Variables */
+struct peltier_s peltier_values;
 
-/*  Public Variables */
-TIM_HandleTypeDef *htim;  // Chosen Timer
-uint32_t channel; // Chosen Channel (1-4)
-int counter_period; // htim.Init.Period in main.c
-
-
-void Peltier_Init(int period, TIM_HandleTypeDef *timer, uint32_t ch){
+void Peltier_Init(TIM_HandleTypeDef *timer, TIM_HandleTypeDef *timer_ref, uint32_t ch, uint32_t ch_ref)
+{
 	/*
-	 * @brief Initializes PWM on desire TIM Channel
+	 * @brief Initializes PWM on desire TIM Channel and on reference TIM Channel
 	 *
-	 * @param (int) period - Counter Period
-	 * @param (TIM_HandleTypeDef *) timer - Chosen Timer
-	 * @param (uint32_t) ch - Chosen Channel
+	 * @param (TIM_HandleTypeDef*) Pointer to the timer handle
+	 * @param (TIM_HandleTypeDef*) Pointer to the reference timer handle
+	 * @param (uint32_t) Channel used for PWM
+	 * @param (uint32_t) Channel used for PWM on reference timer
 	 */
 
 	// Save Values
-    htim = timer;
-    channel = ch;
-    counter_period = period;
+	peltier_values.timer = timer;
+	peltier_values.timer_ref = timer_ref;
+	peltier_values.channel = ch;
+	peltier_values.channel_ref = ch_ref;
 
-    // Initialize PWM on correct Timer and Channel
-    HAL_TIM_PWM_Start(&htim, channel);
+	// Initialize PWM on correct Timer and Channel
+	HAL_TIM_PWM_Start(&timer_ref, ch_ref);
+	HAL_TIM_PWM_Start(&timer, ch);
 }
 
-void Peltier_SetCycle(float ratio){
+void Peltier_SetCycle(float ratio)
+{
 	/*
 	 * @brief Setting a new duty cycle, from 0-1
 	 *
@@ -40,8 +41,8 @@ void Peltier_SetCycle(float ratio){
 	 */
 
 	// Multiply to correct counter period scale, and inverse value (since it is inversely proportional) ie: 20% Power -> 80/100 Duty Cycle
-	int fraction = (counter_period - (ratio * counter_period));
+	int fraction = (peltier_values.timer.Init.Period) - (ratio * peltier_values.timer.Init.Period);
 
 	// Set new duty cycle
-	__HAL_TIM_SET_COMPARE(&htim, channel, fraction);
+	__HAL_TIM_SET_COMPARE(&peltier_values.timer, peltier_values.channel, fraction);
 }

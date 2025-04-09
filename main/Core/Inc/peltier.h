@@ -10,10 +10,17 @@
 
 #include <stdint.h>
 #include "stm32f4xx.h"
+// Peltier info structure
+struct peltier_s
+{
+    TIM_HandleTypeDef *timer;
+    TIM_HandleTypeDef *timer_ref;
+    uint32_t channel;
+    uint32_t channel_ref;
+};
 
-void Peltier_Init(int period, TIM_HandleTypeDef *timer, uint32_t ch);
+void Peltier_Init(TIM_HandleTypeDef *timer, TIM_HandleTypeDef *timer_ref, uint32_t ch, uint32_t ch_ref);
 
 void Peltier_SetCycle(float ratio);
-
 
 #endif // __PELTIER_H
