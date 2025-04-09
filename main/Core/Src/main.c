@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "enabled.h"
+#include "peltier.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -137,6 +138,9 @@ int main(void)
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
   printf("Beginning initialization...\r\n");
+  Peltier_Init(&htim4, &htim3, TIM_CHANNEL_1, TIM_CHANNEL_1); //Testing code
+  Peltier_SetCycle(0.3); // Test
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -146,6 +150,8 @@ int main(void)
 	  printf("Time: %ld\r\n", HAL_GetTick());
 	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 	  HAL_Delay(1000);
+
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
