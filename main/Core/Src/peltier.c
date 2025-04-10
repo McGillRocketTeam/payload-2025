@@ -7,6 +7,8 @@
  */
 
 #include "peltier.h"
+#include "enabled.h"
+
 /* Global Variables */
 struct peltier_handler peltier_values;
 
@@ -16,8 +18,10 @@ struct peltier_handler peltier_values;
 	 * @param (TIM_HandleTypeDef*) Pointer to the timer handle
 	 * @param (uint32_t) Channel used for PWM
 	 */
+
 void Peltier_Init(TIM_HandleTypeDef *timer, TIM_HandleTypeDef *timer_ref, uint32_t ch, uint32_t ch_ref)
-{
+{ 
+#ifdef PELTIER_ENABLED
 	// Save Values
 	peltier_values.timer = timer;
 	peltier_values.channel = ch;
@@ -26,6 +30,7 @@ void Peltier_Init(TIM_HandleTypeDef *timer, TIM_HandleTypeDef *timer_ref, uint32
 	HAL_TIM_PWM_Start(timer_ref, ch_ref);
 	HAL_TIM_PWM_Start(timer, ch);
 	__HAL_TIM_SET_COMPARE(timer_ref, ch_ref,  timer_ref->Init.Period);
+#endif // PELTIER_ENABLED
 }
 
 /**
@@ -35,6 +40,7 @@ void Peltier_Init(TIM_HandleTypeDef *timer, TIM_HandleTypeDef *timer_ref, uint32
 	 */
 void Peltier_SetCycle(float ratio)
 {
+#ifdef PELTIER_ENABLED
 	if (ratio < 0){
 		ratio = 0;
 	}else if(ratio > 1){
@@ -45,4 +51,5 @@ void Peltier_SetCycle(float ratio)
 
 	// Set new duty cycle
 	__HAL_TIM_SET_COMPARE(peltier_values.timer, peltier_values.channel, fraction);
+#endif // PELTIER_ENABLED
 }
