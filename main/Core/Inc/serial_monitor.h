@@ -22,5 +22,6 @@
 int printf(const char *restrict format, ...);
 
 extern UART_HandleTypeDef huart4;
+#define SERIAL_MONITOR_UART huart4
 
 #endif /* INC_SERIAL_MONITOR_H_ */
