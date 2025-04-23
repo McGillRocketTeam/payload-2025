@@ -73,8 +73,6 @@ enum command_type
 
 #define N_TEMPERATURES 8
 typedef float temperature;
-// Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
-temperature temperatures[N_TEMPERATURES] = {1, 5, 10, 15, 20, 25, 30, 37};
 
 union command_data
 {

@@ -1,6 +1,9 @@
 #include "CAN_bus.h"
 #include "enabled.h"
 
+// Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
+temperature temperatures[N_TEMPERATURES] = {1, 5, 10, 15, 20, 25, 30, 37};
+
 bool CAN_bus_init(struct CAN_bus_handler *c, uint32_t base_id)
 {
 #if CAN_BUS_ENABLED
