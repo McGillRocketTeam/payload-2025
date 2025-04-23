@@ -13,10 +13,8 @@ bool CAN_bus_init(struct CAN_bus_handler *c, uint32_t base_id)
         c->Tx_headers[i].StdId = base_id + i;
         c->Tx_headers[i].TransmitGlobalTime = DISABLE;
     }
-    return true;
-#else
-    return false;
 #endif
+    return true;
 }
 
 bool CAN_bus_receieve(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan1)
@@ -26,14 +24,15 @@ bool CAN_bus_receieve(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan1)
     c->command_ready = true;
     return status == HAL_OK;
 #else
-    return false;
+    return true;
 #endif
 }
 
 struct command CAN_bus_parse_command(struct CAN_bus_handler *c)
 {
-#if CAN_BUS_ENABLED
     struct command com;
+    com.type = NONE;
+#if CAN_BUS_ENABLED
     union command_data data;
     if (c->command_ready)
     {
@@ -59,16 +58,9 @@ struct command CAN_bus_parse_command(struct CAN_bus_handler *c)
             com.type = INVALID;
         }
     }
-    else
-    {
-        com.type = NONE;
-    }
     com.data = data;
-    return com;
-#else 
-    struct command empty;
-    return empty;
 #endif
+    return com;
 }
 
 bool CAN_bus_send(
@@ -127,6 +119,6 @@ bool CAN_bus_send(
 
     return !(status1 != HAL_OK || status2 != HAL_OK || status3 != HAL_OK);
 #else
-    return false
+    return true;
 #endif
 }
