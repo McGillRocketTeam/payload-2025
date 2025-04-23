@@ -4,9 +4,10 @@
 // Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
 temperature temperatures[N_TEMPERATURES] = {1, 5, 10, 15, 20, 25, 30, 37};
 
-bool CAN_bus_init(struct CAN_bus_handler *c, uint32_t base_id)
+bool CAN_bus_init(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan, uint32_t base_id)
 {
 #if CAN_BUS_ENABLED
+	c->hcan = hcan;
     for (int i = 0; i < N_MESSAGES; i++)
     {
         c->Tx_headers[i].DLC = 8;
@@ -16,16 +17,18 @@ bool CAN_bus_init(struct CAN_bus_handler *c, uint32_t base_id)
         c->Tx_headers[i].StdId = base_id + i;
         c->Tx_headers[i].TransmitGlobalTime = DISABLE;
     }
-#endif
+    return HAL_CAN_Start(hcan) == HAL_OK;
+#else
     return true;
+#endif
 }
 
-bool CAN_bus_receieve(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan)
+bool CAN_bus_receieve(struct CAN_bus_handler *c)
 {
 #if CAN_BUS_ENABLED
-    HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &(c->Rx_header), c->Rx_data);
-    c->command_ready = true;
-    return status == HAL_OK;
+	bool received = HAL_CAN_GetRxMessage(c->hcan, CAN_RX_FIFO0, &(c->Rx_header), c->Rx_data) == HAL_OK;
+    c->command_ready = received;
+    return received;
 #else
     return true;
 #endif
@@ -68,7 +71,6 @@ struct command CAN_bus_parse_command(struct CAN_bus_handler *c)
 
 bool CAN_bus_send(
     struct CAN_bus_handler *c,
-    CAN_HandleTypeDef *hcan,
     bool ok,
     bool sampling_state,
     bool temperature_control_state,
@@ -116,9 +118,9 @@ bool CAN_bus_send(
     HAL_StatusTypeDef status2;
     HAL_StatusTypeDef status3;
 
-    status1 = HAL_CAN_AddTxMessage(hcan, &((c->Tx_headers)[0]), msg1_u.bytes, &(c->Tx_mailbox));
-    status2 = HAL_CAN_AddTxMessage(hcan, &((c->Tx_headers)[1]), msg2_u.bytes, &(c->Tx_mailbox));
-    status3 = HAL_CAN_AddTxMessage(hcan, &((c->Tx_headers)[2]), msg3_u.bytes, &(c->Tx_mailbox));
+    status1 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[0]), msg1_u.bytes, &(c->Tx_mailbox));
+    status2 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[1]), msg2_u.bytes, &(c->Tx_mailbox));
+    status3 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[2]), msg3_u.bytes, &(c->Tx_mailbox));
 
     return !(status1 != HAL_OK || status2 != HAL_OK || status3 != HAL_OK);
 #else

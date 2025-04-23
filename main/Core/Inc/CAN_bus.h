@@ -88,6 +88,7 @@ struct command
 
 struct CAN_bus_handler
 {
+	CAN_HandleTypeDef *hcan;
     CAN_TxHeaderTypeDef Tx_headers[N_MESSAGES];
     uint32_t Tx_mailbox;
     CAN_RxHeaderTypeDef Rx_header;
@@ -95,15 +96,14 @@ struct CAN_bus_handler
     bool command_ready;
 };
 
-bool CAN_bus_init(struct CAN_bus_handler *c, uint32_t base_id);
+bool CAN_bus_init(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan, uint32_t base_id);
 
-bool CAN_bus_receieve(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan1);
+bool CAN_bus_receieve(struct CAN_bus_handler *c);
 
 struct command CAN_bus_parse_command(struct CAN_bus_handler *c);
 
 bool CAN_bus_send(
     struct CAN_bus_handler *c,
-    CAN_HandleTypeDef *hcan1,
     bool ok,
     bool sampling_state,
     bool temperature_control_state,
