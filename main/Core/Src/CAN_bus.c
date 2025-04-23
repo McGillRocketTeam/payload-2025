@@ -17,10 +17,10 @@ bool CAN_bus_init(struct CAN_bus_handler *c, uint32_t base_id)
     return true;
 }
 
-bool CAN_bus_receieve(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan1)
+bool CAN_bus_receieve(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan)
 {
 #if CAN_BUS_ENABLED
-    HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(hcan1, CAN_RX_FIFO0, &(c->Rx_header), c->Rx_data);
+    HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &(c->Rx_header), c->Rx_data);
     c->command_ready = true;
     return status == HAL_OK;
 #else
@@ -65,7 +65,7 @@ struct command CAN_bus_parse_command(struct CAN_bus_handler *c)
 
 bool CAN_bus_send(
     struct CAN_bus_handler *c,
-    CAN_HandleTypeDef *hcan1,
+    CAN_HandleTypeDef *hcan,
     bool ok,
     bool sampling_state,
     bool temperature_control_state,
@@ -113,9 +113,9 @@ bool CAN_bus_send(
     HAL_StatusTypeDef status2;
     HAL_StatusTypeDef status3;
 
-    status1 = HAL_CAN_AddTxMessage(hcan1, &((c->Tx_headers)[0]), msg1_u.bytes, &(c->Tx_mailbox));
-    status2 = HAL_CAN_AddTxMessage(hcan1, &((c->Tx_headers)[1]), msg2_u.bytes, &(c->Tx_mailbox));
-    status3 = HAL_CAN_AddTxMessage(hcan1, &((c->Tx_headers)[2]), msg3_u.bytes, &(c->Tx_mailbox));
+    status1 = HAL_CAN_AddTxMessage(hcan, &((c->Tx_headers)[0]), msg1_u.bytes, &(c->Tx_mailbox));
+    status2 = HAL_CAN_AddTxMessage(hcan, &((c->Tx_headers)[1]), msg2_u.bytes, &(c->Tx_mailbox));
+    status3 = HAL_CAN_AddTxMessage(hcan, &((c->Tx_headers)[2]), msg3_u.bytes, &(c->Tx_mailbox));
 
     return !(status1 != HAL_OK || status2 != HAL_OK || status3 != HAL_OK);
 #else
