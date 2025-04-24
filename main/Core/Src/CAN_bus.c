@@ -1,5 +1,6 @@
 #include "CAN_bus.h"
 #include "enabled.h"
+#include "serial_monitor.h"
 
 // Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
 temperature temperatures[N_TEMPERATURES] = {1, 5, 10, 15, 20, 25, 30, 37};
@@ -17,7 +18,9 @@ bool CAN_bus_init(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan, uint32_t b
         c->Tx_headers[i].StdId = base_id + i;
         c->Tx_headers[i].TransmitGlobalTime = DISABLE;
     }
-    return HAL_CAN_Start(hcan) == HAL_OK;
+    HAL_StatusTypeDef start_status = HAL_CAN_Start(hcan);
+    HAL_StatusTypeDef interrupt_status = HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
+    return start_status == HAL_OK && interrupt_status == HAL_OK;
 #else
     return true;
 #endif
@@ -83,7 +86,8 @@ bool CAN_bus_send(
     uint16_t amplitude_x,
     uint16_t amplitude_y,
     uint16_t amplitude_z,
-    uint32_t time_elapsed)
+    uint32_t time_elapsed
+)
 {
 #if CAN_BUS_ENABLED
     struct CAN_msg_1_s msg1;
@@ -122,7 +126,7 @@ bool CAN_bus_send(
     status2 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[1]), msg2_u.bytes, &(c->Tx_mailbox));
     status3 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[2]), msg3_u.bytes, &(c->Tx_mailbox));
 
-    return !(status1 != HAL_OK || status2 != HAL_OK || status3 != HAL_OK);
+    return status1 == HAL_OK && status2 == HAL_OK && status3 == HAL_OK;
 #else
     return true;
 #endif
