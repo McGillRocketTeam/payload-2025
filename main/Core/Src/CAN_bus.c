@@ -8,6 +8,7 @@ temperature temperatures[N_TEMPERATURES] = {1, 5, 10, 15, 20, 25, 30, 37};
 bool CAN_bus_init(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan, uint32_t base_id)
 {
 #if CAN_BUS_ENABLED
+	// Configure transmit headers for all three messages
 	c->hcan = hcan;
     for (int i = 0; i < N_MESSAGES; i++)
     {
@@ -18,9 +19,30 @@ bool CAN_bus_init(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan, uint32_t b
         c->Tx_headers[i].StdId = base_id + i;
         c->Tx_headers[i].TransmitGlobalTime = DISABLE;
     }
+
+    // Configure filter banks for receiving messages
+    uint32_t command_ids[5] = {RESET_PAYLOAD, TOGGLE_SAMPLING, TOGGLE_COOLER, LANDED, SET_TEMPERATURE};
+    CAN_FilterTypeDef filter_config;
+    bool filter_config_success = true;
+    for (int i = 0; i < 5; i++)
+    {
+		filter_config.FilterActivation = CAN_FILTER_ENABLE;
+		filter_config.FilterMode = CAN_FILTERMODE_IDMASK;
+		filter_config.FilterScale = CAN_FILTERSCALE_32BIT;
+		filter_config.FilterFIFOAssignment = CAN_RX_FIFO0;
+		filter_config.FilterBank = i;  // anything between 0 to SlaveStartFilterBank
+		filter_config.SlaveStartFilterBank = 13;  // 13 to 27 are assigned to slave CAN (CAN 2) OR 0 to 12 are assgned to CAN1
+		filter_config.FilterIdHigh = command_ids[i]<<5;
+		filter_config.FilterIdLow = 0x0000;
+		filter_config.FilterMaskIdHigh = 0xFFFF<<5;
+		filter_config.FilterMaskIdLow = 0x0000;
+		filter_config_success &= HAL_CAN_ConfigFilter(hcan, &filter_config) == HAL_OK;
+    }
+
+    // Start peripheral and enable receipt callback
     HAL_StatusTypeDef start_status = HAL_CAN_Start(hcan);
     HAL_StatusTypeDef interrupt_status = HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
-    return start_status == HAL_OK && interrupt_status == HAL_OK;
+    return start_status == HAL_OK && interrupt_status == HAL_OK && filter_config_success;
 #else
     return true;
 #endif
@@ -123,8 +145,15 @@ bool CAN_bus_send(
     HAL_StatusTypeDef status3;
 
     status1 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[0]), msg1_u.bytes, &(c->Tx_mailbox));
+    HAL_Delay(100);
+    printf("err1: %ld, ", HAL_CAN_GetError(c->hcan));
     status2 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[1]), msg2_u.bytes, &(c->Tx_mailbox));
+    printf("err2: %ld, ", HAL_CAN_GetError(c->hcan));
+    HAL_Delay(100);
     status3 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[2]), msg3_u.bytes, &(c->Tx_mailbox));
+    printf("err2: %ld\r\n", HAL_CAN_GetError(c->hcan));
+
+    printf("status1: %d, status2: %d, status3: %d\r\n", status1, status2, status3);
 
     return status1 == HAL_OK && status2 == HAL_OK && status3 == HAL_OK;
 #else

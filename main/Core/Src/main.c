@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "serial_monitor.h"
+#include "CAN_bus.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -54,7 +55,7 @@ TIM_HandleTypeDef htim4;
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
-
+struct CAN_bus_handler CAN_bus;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -116,6 +117,8 @@ int main(void)
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
   printf("Beginning initialization...\r\n");
+
+  CAN_bus_init(&CAN_bus, &hcan1, 0x300);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -124,6 +127,7 @@ int main(void)
   {
 	  printf("Time: %ld\r\n", HAL_GetTick());
 	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+	  CAN_bus_send(&CAN_bus, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	  HAL_Delay(1000);
     /* USER CODE END WHILE */
 
@@ -608,7 +612,10 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
+{
+	CAN_bus_receive(&CAN_bus);
+}
 /* USER CODE END 4 */
 
 /**
