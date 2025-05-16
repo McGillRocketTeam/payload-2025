@@ -116,6 +116,7 @@ int main(void)
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
   printf("Beginning initialization...\r\n");
+  int timer = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -123,7 +124,23 @@ int main(void)
   while (1)
   {
 	  printf("Time: %ld\r\n", HAL_GetTick());
+	  HAL_ADC_Start(&hadc1);
+	  HAL_ADC_Start(&hadc2);
+	  HAL_ADC_Start(&hadc3);
+	  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+	  HAL_ADC_PollForConversion(&hadc2, HAL_MAX_DELAY);
+	  HAL_ADC_PollForConversion(&hadc3, HAL_MAX_DELAY);
+	  uint32_t acc1 = HAL_ADC_GetValue(&hadc1);
+	  uint32_t acc2 = HAL_ADC_GetValue(&hadc2);
+	  uint32_t acc3 = HAL_ADC_GetValue(&hadc3);
+	  printf("ADC: %ld, %ld, %ld\r\n", acc1, acc2, acc3);
 	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+	  timer++;
+	  if (timer > 10)
+	  {
+		  timer = 0;
+		  HAL_GPIO_TogglePin(ACCEL_POWER_GPIO_Port, ACCEL_POWER_Pin);
+	  }
 	  HAL_Delay(1000);
     /* USER CODE END WHILE */
 
