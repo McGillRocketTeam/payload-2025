@@ -47,7 +47,7 @@ ADC_HandleTypeDef hadc3;
 
 CAN_HandleTypeDef hcan1;
 
-I2C_HandleTypeDef hi2c3; //DONT FORGET
+I2C_HandleTypeDef hi2c3;
 
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
@@ -55,7 +55,7 @@ TIM_HandleTypeDef htim4;
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
-float Temperature, Pressure, Humidity;
+float temperature, pressure, humidity;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -149,7 +149,7 @@ int main(void)
 	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
 	  BME280_Measure();
-	  printf("%d\n\r", (int) (Temperature * 10));
+	  printf("Temp: %d, Pressure: %d, Humidity: %d\n\r", (int) (temperature * 10), (int) pressure, (int) (humidity * 100));
 
 	  HAL_Delay(1000);
     /* USER CODE END WHILE */
@@ -181,9 +181,9 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 16;
-  RCC_OscInitStruct.PLL.PLLN = 336;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLN = 72;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 2;
   RCC_OscInitStruct.PLL.PLLR = 2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)

@@ -28,7 +28,7 @@ extern I2C_HandleTypeDef hi2c3;
 
 #define BME280_ADDRESS 0xEC  // SDIO is grounded, the 7 bit address is 0x76 and 8 bit address = 0x76<<1 = 0xEC
 
-extern float Temperature, Pressure, Humidity;
+extern float temperature, pressure, humidity;
 
 uint8_t chipID;
 
@@ -305,28 +305,28 @@ void BME280_Measure (void)
 {
 	if (BMEReadRaw() == 0)
 	{
-		  if (tRaw == 0x800000) Temperature = 0; // value in case temp measurement was disabled
+		  if (tRaw == 0x800000) temperature = 0; // value in case temp measurement was disabled
 		  else
 		  {
-			  Temperature = (BME280_compensate_T_int32 (tRaw))/100.0;  // as per datasheet, the temp is x100
+			  temperature = (BME280_compensate_T_int32 (tRaw))/100.0;  // as per datasheet, the temp is x100
 		  }
 
-		  if (pRaw == 0x800000) Pressure = 0; // value in case temp measurement was disabled
+		  if (pRaw == 0x800000) pressure = 0; // value in case temp measurement was disabled
 		  else
 		  {
 #if SUPPORT_64BIT
-			  Pressure = (BME280_compensate_P_int64 (pRaw))/256.0;  // as per datasheet, the pressure is x256
+			  pressure = (BME280_compensate_P_int64 (pRaw))/256.0;  // as per datasheet, the pressure is x256
 
 #elif SUPPORT_32BIT
-			  Pressure = (BME280_compensate_P_int32 (pRaw));  // as per datasheet, the pressure is Pa
+			  pressure = (BME280_compensate_P_int32 (pRaw));  // as per datasheet, the pressure is Pa
 
 #endif
 		  }
 
-		  if (hRaw == 0x8000) Humidity = 0; // value in case temp measurement was disabled
+		  if (hRaw == 0x8000) humidity = 0; // value in case temp measurement was disabled
 		  else
 		  {
-			  Humidity = (bme280_compensate_H_int32 (hRaw))/1024.0;  // as per datasheet, the temp is x1024
+			  humidity = (bme280_compensate_H_int32 (hRaw))/1024.0;  // as per datasheet, the temp is x1024
 		  }
 	}
 
@@ -334,6 +334,6 @@ void BME280_Measure (void)
 	// if the device is detached
 	else
 	{
-		Temperature = Pressure = Humidity = 0;
+		temperature = pressure = humidity = 0;
 	}
 }
