@@ -18,7 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-
+#include "enabled.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "serial_monitor.h"
@@ -115,8 +115,16 @@ int main(void)
   MX_I2C3_Init();
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
-  printf("Beginning initialization...\r\n");
-  /* USER CODE END 2 */
+    printf("Beginning initialization...\r\n");
+    
+    if (FINAL_BUILD_ENABLED){
+      // Blink profusely
+      for (int i = 0; i < 25; i++){
+        HAL_GPIO_TogglePin(PIN39, PIN39);
+        HAL_Delay(200);
+    }
+  }
+    /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */

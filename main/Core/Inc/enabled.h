@@ -13,5 +13,5 @@
 #define CAN_BUS_ENABLED 1
 #define SD_CARD_ENABLED 1
 #define SERIAL_MONITOR_ENABLED 1
-
+#define FINAL_BUILD_ENABLED 1
 #endif
