@@ -164,14 +164,6 @@
 		<project id="payload-CAN.null.484628599" name="payload-CAN"/>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
-	<storageModule moduleId="scannerConfiguration">
-		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		<scannerConfigBuildInfo instanceId="com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.release.1739831681;com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.release.1739831681.;com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.1700465769;com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.566291607">
-			<autodiscovery enabled="false" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
-		<scannerConfigBuildInfo instanceId="com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.debug.2019130128;com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.debug.2019130128.;com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.434250397;com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.42231370">
-			<autodiscovery enabled="false" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
-	</storageModule>
 	<storageModule moduleId="refreshScope"/>
+	<storageModule moduleId="scannerConfiguration"/>
 </cproject>
