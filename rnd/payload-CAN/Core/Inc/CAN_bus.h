@@ -90,7 +90,6 @@ struct CAN_bus_handler
 {
 	CAN_HandleTypeDef *hcan;
     CAN_TxHeaderTypeDef Tx_headers[N_MESSAGES];
-    uint32_t Tx_mailbox;
     CAN_RxHeaderTypeDef Rx_header;
     uint8_t Rx_data[8];
     bool command_ready;

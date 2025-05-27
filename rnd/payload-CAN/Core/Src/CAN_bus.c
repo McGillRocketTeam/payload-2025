@@ -138,11 +138,14 @@ bool CAN_bus_send(
     HAL_StatusTypeDef status2;
     HAL_StatusTypeDef status3;
 
-    status1 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[0]), msg1_u.bytes, &(c->Tx_mailbox));
-    HAL_Delay(100);
-    status2 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[1]), msg2_u.bytes, &(c->Tx_mailbox));
-    HAL_Delay(100);
-    status3 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[2]), msg3_u.bytes, &(c->Tx_mailbox));
+    uint32_t Tx_mailbox;
+
+    status1 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[0]), msg1_u.bytes, &Tx_mailbox);
+    while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox));
+    status2 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[1]), msg2_u.bytes, &Tx_mailbox);
+    while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox));
+    status3 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[2]), msg3_u.bytes, &Tx_mailbox);
+    while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox));
 
     return status1 == HAL_OK && status2 == HAL_OK && status3 == HAL_OK;
 }
