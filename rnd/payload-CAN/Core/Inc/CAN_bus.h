@@ -65,6 +65,7 @@ enum command_type
     RESET_PAYLOAD = 0x05, // Reset payload
     TOGGLE_SAMPLING = 0x11, // Toggle payload sampling
     TOGGLE_COOLER = 0x18, // Toggle peltier cooler
+	TOGGLE_LAUNCH_MODE = 0x33,
     LANDED = 0x17,
     SET_TEMPERATURE = 0x19, // Set target temperature. There are 8 possible temperature values. Encoded as 0-7.
     NONE = -1,

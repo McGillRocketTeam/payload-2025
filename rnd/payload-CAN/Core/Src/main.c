@@ -67,39 +67,6 @@ uint32_t TxMailbox;
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
 {
 	CAN_bus_receive(&can);
-	struct command com = CAN_bus_parse_command(&can);
-	char *type;
-	int data = 0;
-	switch (com.type)
-	{
-	case RESET_PAYLOAD:
-		type = "RESET_PAYLOAD";
-		break;
-	case TOGGLE_SAMPLING:
-		type = "TOGGLE_SAMPLING";
-		data = com.data.on;
-		break;
-	case TOGGLE_COOLER:
-		type = "TOGGLE_COOLER";
-		data = com.data.on;
-		break;
-	case LANDED:
-		type = "LANDED";
-		break;
-	case SET_TEMPERATURE:
-		type = "SET_TEMPERATURE";
-		data = com.data.temp;
-		break;
-	case NONE:
-		type = "NONE";
-		break;
-	case INVALID:
-		type = "INVALID";
-		break;
-	}
-	printf("| PL -------------------------------\r\n");
-	printf("| Command received: %s, Data: %d\r\n", type, data);
-	printf("| ----------------------------------\r\n\r\n");
 }
 
 void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan1)
@@ -200,7 +167,20 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	if (!CAN_bus_send(&can, 1, 0, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9, HAL_GetTick()))
+	if (!CAN_bus_send(&can,
+			count % 2,
+			(count + 1) % 2,
+			count % 2,
+			1 + count,
+			2 + count,
+			3 + count,
+			4 + count,
+			5 + count,
+			6 + count,
+			7 + count,
+			8 + count,
+			9 + count,
+			HAL_GetTick()))
 	{
 		printf("can bus send error\r\n");
 		Error_Handler();
@@ -271,6 +251,14 @@ int main(void)
 		TxHeader.StdId = SET_TEMPERATURE;
 		TxData[0] = 7;
 		break;
+	case 14:
+		TxHeader.StdId = TOGGLE_LAUNCH_MODE;
+		TxData[0] = 0;
+		break;
+	case 15:
+		TxHeader.StdId = TOGGLE_LAUNCH_MODE;
+		TxData[0] = 1;
+		break;
 	}
 
 	HAL_Delay(1000);
@@ -282,7 +270,46 @@ int main(void)
 	}
 
 	count++;
-	count %= 14;
+	count %= 16;
+
+	struct command com = CAN_bus_parse_command(&can);
+
+	if (com.type != NONE){
+		char *type;
+		int data = 0;
+		switch (com.type)
+		{
+		case RESET_PAYLOAD:
+			type = "RESET_PAYLOAD";
+			break;
+		case TOGGLE_SAMPLING:
+			type = "TOGGLE_SAMPLING";
+			data = com.data.on;
+			break;
+		case TOGGLE_COOLER:
+			type = "TOGGLE_COOLER";
+			data = com.data.on;
+			break;
+		case TOGGLE_LAUNCH_MODE:
+			type = "TOGGLE_LAUNCH_MODE";
+			data = com.data.on;
+			break;
+		case LANDED:
+			type = "LANDED";
+			break;
+		case SET_TEMPERATURE:
+			type = "SET_TEMPERATURE";
+			data = com.data.temp;
+			break;
+		case NONE:
+			type = "NONE";
+			break;
+		case INVALID:
+			type = "INVALID";
+			break;
+		}
+		printf("Command received: %s, Data: %d\r\n", type, data);
+	}
 
 	HAL_Delay(1000);
     /* USER CODE END WHILE */

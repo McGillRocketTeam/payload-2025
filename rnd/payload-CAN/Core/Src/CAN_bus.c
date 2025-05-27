@@ -20,10 +20,10 @@ bool CAN_bus_init(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan, uint32_t b
     }
 
     // Configure filter banks for receiving messages
-    uint32_t command_ids[5] = {RESET_PAYLOAD, TOGGLE_SAMPLING, TOGGLE_COOLER, LANDED, SET_TEMPERATURE};
+    uint32_t command_ids[6] = {RESET_PAYLOAD, TOGGLE_SAMPLING, TOGGLE_COOLER, TOGGLE_LAUNCH_MODE, LANDED, SET_TEMPERATURE};
     CAN_FilterTypeDef filter_config;
     bool filter_config_success = true;
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 6; i++)
     {
 		filter_config.FilterActivation = CAN_FILTER_ENABLE;
 		filter_config.FilterMode = CAN_FILTERMODE_IDMASK;
@@ -71,6 +71,10 @@ struct command CAN_bus_parse_command(struct CAN_bus_handler *c)
             com.type = TOGGLE_COOLER;
             data.on = c->Rx_data[0];
             break;
+        case TOGGLE_LAUNCH_MODE:
+        	com.type = TOGGLE_LAUNCH_MODE;
+        	data.on = c->Rx_data[0];
+        	break;
         case LANDED:
             com.type = LANDED;
         	break;
