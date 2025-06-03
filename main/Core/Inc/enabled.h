@@ -12,6 +12,7 @@
 // Set to 0 to disable a feature
 #define CAN_BUS_ENABLED 1
 #define SD_CARD_ENABLED 1
+#define PELTIER_ENABLED 1
 #define SERIAL_MONITOR_ENABLED 1
 #define TEMPERATURE_SENSOR_ENABLED 1
 #endif

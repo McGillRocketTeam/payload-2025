@@ -21,6 +21,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "serial_monitor.h"
+#include "peltier.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,7 +54,7 @@ TIM_HandleTypeDef htim4;
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
-
+PL_Peltier_Handler peltier;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -114,9 +115,17 @@ int main(void)
   MX_I2C3_Init();
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
-    printf("Beginning initialization...\r\n");
-    
-    /* USER CODE END 2 */
+  printf("Beginning initialization...\r\n");
+
+  if (!PL_Peltier_Init(&peltier, &htim4, &htim3, TIM_CHANNEL_1, TIM_CHANNEL_1))
+  {
+    printf("Peltier cooler configuration error.");
+    Error_Handler();
+  }
+  // Start duty cycle at zero
+  PL_Peltier_SetCycle(&peltier, 0.0);
+
+  /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
