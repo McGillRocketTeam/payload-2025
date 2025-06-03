@@ -138,7 +138,12 @@ int main(void)
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
   printf("Beginning initialization...\r\n");
-  BME280_Config(OSRS_2, OSRS_16, OSRS_1, MODE_NORMAL, T_SB_0p5, IIR_16);
+
+  if (BME280_Config(OSRS_2, OSRS_16, OSRS_1, MODE_NORMAL, T_SB_0p5, IIR_16) != 0)
+  {
+    printf("BME280 temperature sensor configuration error.");
+    Error_Handler();
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -147,10 +152,6 @@ int main(void)
   {
 	  printf("Time: %ld\r\n", HAL_GetTick());
 	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-
-	  BME280_Measure();
-	  printf("Temp: %d, Pressure: %d, Humidity: %d\n\r", (int) (temperature * 10), (int) pressure, (int) (humidity * 100));
-
 	  HAL_Delay(1000);
     /* USER CODE END WHILE */
 
