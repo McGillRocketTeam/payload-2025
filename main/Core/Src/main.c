@@ -22,6 +22,7 @@
 /* USER CODE BEGIN Includes */
 #include "serial_monitor.h"
 #include "peltier.h"
+#include "BME280.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,6 +56,8 @@ UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
 PL_Peltier_Handler peltier;
+
+float temperature, pressure, humidity;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -117,6 +120,12 @@ int main(void)
   /* USER CODE BEGIN 2 */
   printf("Beginning initialization...\r\n");
 
+  if (BME280_Config(OSRS_2, OSRS_16, OSRS_1, MODE_NORMAL, T_SB_0p5, IIR_16) != 0)
+  {
+    printf("BME280 temperature sensor configuration error.");
+    Error_Handler();
+  }
+
   if (!PL_Peltier_Init(&peltier, &htim4, &htim3, TIM_CHANNEL_1, TIM_CHANNEL_1))
   {
     printf("Peltier cooler configuration error.");
@@ -163,9 +172,9 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 16;
-  RCC_OscInitStruct.PLL.PLLN = 336;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLN = 72;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 2;
   RCC_OscInitStruct.PLL.PLLR = 2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
