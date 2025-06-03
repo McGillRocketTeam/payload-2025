@@ -90,6 +90,7 @@ struct command CAN_bus_parse_command(struct CAN_bus_handler *c)
         }
     }
     com.data = data;
+    c->command_ready = false;
     return com;
 }
 
@@ -145,11 +146,13 @@ bool CAN_bus_send(
     uint32_t Tx_mailbox;
 
     status1 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[0]), msg1_u.bytes, &Tx_mailbox);
-    while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox));
+//    while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox));
+    HAL_Delay(100);
     status2 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[1]), msg2_u.bytes, &Tx_mailbox);
-    while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox));
+//    while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox));
+    HAL_Delay(100);
     status3 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[2]), msg3_u.bytes, &Tx_mailbox);
-    while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox));
+//    while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox));
 
     return status1 == HAL_OK && status2 == HAL_OK && status3 == HAL_OK;
 }
