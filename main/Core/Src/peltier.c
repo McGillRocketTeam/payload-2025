@@ -19,7 +19,7 @@
 	 * @param (uint32_t) Channel used for PWM
 	 */
 
-void PL_Peltier_Init(PL_Peltier_Handler *peltier, TIM_HandleTypeDef *timer, TIM_HandleTypeDef *timer_ref, uint32_t ch, uint32_t ch_ref)
+bool PL_Peltier_Init(PL_Peltier_Handler *peltier, TIM_HandleTypeDef *timer, TIM_HandleTypeDef *timer_ref, uint32_t ch, uint32_t ch_ref)
 { 
 #ifdef PELTIER_ENABLED
 	// Save Values
@@ -27,9 +27,12 @@ void PL_Peltier_Init(PL_Peltier_Handler *peltier, TIM_HandleTypeDef *timer, TIM_
 	peltier->channel = ch;
 
 	// Initialize PWM on correct Timer and Channel
-	HAL_TIM_PWM_Start(timer_ref, ch_ref);
-	HAL_TIM_PWM_Start(timer, ch);
+	HAL_StatusTypeDef ref_started = HAL_TIM_PWM_Start(timer_ref, ch_ref);
+	HAL_StatusTypeDef started = HAL_TIM_PWM_Start(timer, ch);
 	__HAL_TIM_SET_COMPARE(timer_ref, ch_ref,  timer_ref->Init.Period);
+	return ref_started == HAL_OK && started == HAL_OK;
+#else // PELTIER_ENABLED
+	return true;
 #endif // PELTIER_ENABLED
 }
 

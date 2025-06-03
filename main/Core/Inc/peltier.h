@@ -9,6 +9,7 @@
 #define __PELTIER_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "stm32f4xx.h"
 // Peltier info structure
 typedef struct
@@ -17,7 +18,7 @@ typedef struct
     uint32_t channel;
 } PL_Peltier_Handler;
 
-void PL_Peltier_Init(PL_Peltier_Handler *peltier, TIM_HandleTypeDef *timer, TIM_HandleTypeDef *timer_ref, uint32_t ch, uint32_t ch_ref);
+bool PL_Peltier_Init(PL_Peltier_Handler *peltier, TIM_HandleTypeDef *timer, TIM_HandleTypeDef *timer_ref, uint32_t ch, uint32_t ch_ref);
 
 void PL_Peltier_SetCycle(PL_Peltier_Handler *peltier, float ratio);
 

@@ -138,22 +138,24 @@ int main(void)
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
   printf("Beginning initialization...\r\n");
-  PL_Peltier_Init(&peltier, &htim4, &htim3, TIM_CHANNEL_1, TIM_CHANNEL_1); //Testing code
-  PL_Peltier_SetCycle(&peltier, 0.3); // Test
+
+  if (!PL_Peltier_Init(&peltier, &htim4, &htim3, TIM_CHANNEL_1, TIM_CHANNEL_1))
+  {
+    printf("Peltier cooler configuration error.");
+    Error_Handler();
+  }
+  // Start duty cycle at zero
+  PL_Peltier_SetCycle(&peltier, 0.0);
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  int count = 0;
   while (1)
   {
 	  printf("Time: %ld\r\n", HAL_GetTick());
 	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-    PL_Peltier_SetCycle(&peltier, count / 100.0);
-    count++;
-    count %= 100;
-	  HAL_Delay(100);
+	  HAL_Delay(1000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
