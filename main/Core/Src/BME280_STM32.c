@@ -19,6 +19,7 @@
 */
 
 #include "BME280_STM32.h"
+#include "enabled.h"
 
 extern I2C_HandleTypeDef hi2c1;
 #define BME280_I2C &hi2c1
@@ -46,6 +47,7 @@ int16_t dig_T2, dig_T3,
 // Read the Trimming parameters saved in the NVM ROM of the device
 void TrimRead(void)
 {
+	#if TEMPERATURE_SENSOR_ENABLED
 	uint8_t trimdata[32];
 	// Read NVM from 0x88 to 0xA1
 	HAL_I2C_Mem_Read(BME280_I2C, BME280_ADDRESS, 0x88, 1, trimdata, 25, HAL_MAX_DELAY);
@@ -72,6 +74,8 @@ void TrimRead(void)
 	dig_H4 = (trimdata[28] << 4) | (trimdata[29] & 0x0f);
 	dig_H5 = (trimdata[30] << 4) | (trimdata[29] >> 4);
 	dig_H6 = (trimdata[31]);
+	#endif
+	//if disabled, do nothing. Nothing is read.
 }
 
 /* Configuration for the BME280
@@ -95,6 +99,7 @@ void TrimRead(void)
 
 int BME280_Config(uint8_t osrs_t, uint8_t osrs_p, uint8_t osrs_h, uint8_t mode, uint8_t t_sb, uint8_t filter)
 {
+	#if TEMPERATURE_SENSOR_ENABLED
 	// Read the Trimming parameters
 	TrimRead();
 
@@ -149,11 +154,15 @@ int BME280_Config(uint8_t osrs_t, uint8_t osrs_p, uint8_t osrs_h, uint8_t mode, 
 		return -1;
 	}
 
+	#endif
+	//if disabled, return 0. Nothing is configured.
 	return 0;
 }
 
 int BMEReadRaw(void)
 {
+	#if TEMPERATURE_SENSOR_ENABLED
+
 	uint8_t RawData[8];
 
 	// Check the chip ID before reading
@@ -176,6 +185,9 @@ int BMEReadRaw(void)
 
 	else
 		return -1;
+	#endif
+	//if disabled, return 0. Nothing is read.
+	return 0;
 }
 
 /* To be used when doing the force measurement
@@ -183,6 +195,8 @@ int BMEReadRaw(void)
  */
 void BME280_WakeUP(void)
 {
+	#if TEMPERATURE_SENSOR_ENABLED
+
 	uint8_t datatowrite = 0;
 
 	// first read the register
@@ -195,6 +209,8 @@ void BME280_WakeUP(void)
 	HAL_I2C_Mem_Write(BME280_I2C, BME280_ADDRESS, CTRL_MEAS_REG, 1, &datatowrite, 1, 1000);
 
 	HAL_Delay(100);
+	#endif
+	//if disabled, do nothing. Sensor is not woken up.
 }
 
 /************* COMPENSATION CALCULATION AS PER DATASHEET (page 25) **************************/
@@ -205,12 +221,18 @@ void BME280_WakeUP(void)
 int32_t t_fine;
 int32_t BME280_compensate_T_int32(int32_t adc_T)
 {
+	#if TEMPERATURE_SENSOR_ENABLED
+
 	int32_t var1, var2, T;
 	var1 = ((((adc_T >> 3) - ((int32_t)dig_T1 << 1))) * ((int32_t)dig_T2)) >> 11;
 	var2 = (((((adc_T >> 4) - ((int32_t)dig_T1)) * ((adc_T >> 4) - ((int32_t)dig_T1))) >> 12) * ((int32_t)dig_T3)) >> 14;
 	t_fine = var1 + var2;
 	T = (t_fine * 5 + 128) >> 8;
 	return T;
+
+	#endif
+	// if disabled, return 0. Nothing is compensated. This should never happen.
+	return 0;
 }
 
 #if SUPPORT_64BIT
@@ -219,6 +241,8 @@ int32_t BME280_compensate_T_int32(int32_t adc_T)
 */
 uint32_t BME280_compensate_P_int64(int32_t adc_P)
 {
+	#if TEMPERATURE_SENSOR_ENABLED
+
 	int64_t var1, var2, p;
 	var1 = ((int64_t)t_fine) - 128000;
 	var2 = var1 * var1 * (int64_t)dig_P6;
@@ -236,12 +260,18 @@ uint32_t BME280_compensate_P_int64(int32_t adc_P)
 	var2 = (((int64_t)dig_P8) * p) >> 19;
 	p = ((p + var1 + var2) >> 8) + (((int64_t)dig_P7) << 4);
 	return (uint32_t)p;
+
+	#endif
+	// if disabled, return 0. Nothing is compensated. This should never happen.
+	return 0;
 }
 
 #elif SUPPORT_32BIT
 // Returns pressure in Pa as unsigned 32 bit integer. Output value of “96386” equals 96386 Pa = 963.86 hPa
 uint32_t BME280_compensate_P_int32(int32_t adc_P)
 {
+	#if TEMPERATURE_SENSOR_ENABLED
+
 	int32_t var1, var2;
 	uint32_t p;
 	var1 = (((int32_t)t_fine) >> 1) - (int32_t)64000;
@@ -267,6 +297,10 @@ uint32_t BME280_compensate_P_int32(int32_t adc_P)
 	var2 = (((int32_t)(p >> 2)) * ((int32_t)dig_P8)) >> 13;
 	p = (uint32_t)((int32_t)p + ((var1 + var2 + dig_P7) >> 4));
 	return p;
+
+	#endif
+	// if disabled, return 0. Nothing is compensated. This should never happen.
+	return 0;
 }
 #endif
 
@@ -275,6 +309,8 @@ uint32_t BME280_compensate_P_int32(int32_t adc_P)
 */
 uint32_t bme280_compensate_H_int32(int32_t adc_H)
 {
+	#if TEMPERATURE_SENSOR_ENABLED
+
 	int32_t v_x1_u32r;
 	v_x1_u32r = (t_fine - ((int32_t)76800));
 	v_x1_u32r = (((((adc_H << 14) - (((int32_t)dig_H4) << 20) - (((int32_t)dig_H5) * v_x1_u32r)) + ((int32_t)16384)) >> 15) * (((((((v_x1_u32r *
@@ -293,6 +329,10 @@ uint32_t bme280_compensate_H_int32(int32_t adc_H)
 	v_x1_u32r = (v_x1_u32r < 0 ? 0 : v_x1_u32r);
 	v_x1_u32r = (v_x1_u32r > 419430400 ? 419430400 : v_x1_u32r);
 	return (uint32_t)(v_x1_u32r >> 12);
+
+	#endif
+	// if disabled, return 0. Nothing is compensated. This should never happen.
+	return 0;
 }
 /*********************************************************************************************************/
 
@@ -301,6 +341,8 @@ uint32_t bme280_compensate_H_int32(int32_t adc_H)
  */
 void BME280_Measure(void)
 {
+	#if TEMPERATURE_SENSOR_ENABLED
+
 	if (BMEReadRaw() == 0)
 	{
 		if (tRaw == 0x800000)
@@ -336,26 +378,7 @@ void BME280_Measure(void)
 	{
 		Temperature = Pressure = Humidity = 0;
 	}
+
+	#endif
+	// if disabled, do nothing. Nothing is measured.
 }
-
-/*
- * Disable the temperature sensor.
- * To use: #define BME280_TEMP_DISABLE
- * if the temperature sensor is disabled, all functions will return a success value.
- */
-#ifdef BME280_TEMP_DISABLE
-
-void TrimRead(void) {}
-int BME280_Config(uint8_t osrs_t, uint8_t osrs_p, uint8_t osrs_h, uint8_t mode, uint8_t t_sb, uint8_t filter) { return 0; }
-int BMEReadRaw(void) { return 0; }
-void BME280_WakeUP(void) {}
-int32_t BME280_compensate_T_int32(int32_t adc_T) { return 0; }
-uint32_t bme280_compensate_H_int32(int32_t adc_H) { return 0; }
-#if SUPPORT_64BIT
-uint32_t BME280_compensate_P_int64(int32_t adc_P) { return 0; }
-#elif SUPPORT_32BIT
-uint32_t BME280_compensate_P_int32(int32_t adc_P) { return 0; }
-#endif
-void BME280_Measure(void) {}
-
-#endif
