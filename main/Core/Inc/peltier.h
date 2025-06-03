@@ -11,15 +11,14 @@
 #include <stdint.h>
 #include "stm32f4xx.h"
 // Peltier info structure
-struct peltier_handler
+typedef struct
 {
     TIM_HandleTypeDef *timer;
-
     uint32_t channel;
-};
+} PL_Peltier_Handler;
 
-void Peltier_Init(TIM_HandleTypeDef *timer, TIM_HandleTypeDef *timer_ref, uint32_t ch, uint32_t ch_ref);
+void PL_Peltier_Init(PL_Peltier_Handler *peltier, TIM_HandleTypeDef *timer, TIM_HandleTypeDef *timer_ref, uint32_t ch, uint32_t ch_ref);
 
-void Peltier_SetCycle(float ratio);
+void PL_Peltier_SetCycle(PL_Peltier_Handler *peltier, float ratio);
 
 #endif // __PELTIER_H

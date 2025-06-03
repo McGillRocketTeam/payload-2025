@@ -55,7 +55,7 @@ TIM_HandleTypeDef htim4;
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
-
+PL_Peltier_Handler peltier;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -138,20 +138,22 @@ int main(void)
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
   printf("Beginning initialization...\r\n");
-  Peltier_Init(&htim4, &htim3, TIM_CHANNEL_1, TIM_CHANNEL_1); //Testing code
-  Peltier_SetCycle(0.3); // Test
+  PL_Peltier_Init(&peltier, &htim4, &htim3, TIM_CHANNEL_1, TIM_CHANNEL_1); //Testing code
+  PL_Peltier_SetCycle(&peltier, 0.3); // Test
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  int count = 0;
   while (1)
   {
 	  printf("Time: %ld\r\n", HAL_GetTick());
 	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-	  HAL_Delay(1000);
-
-
+    PL_Peltier_SetCycle(&peltier, count / 100.0);
+    count++;
+    count %= 100;
+	  HAL_Delay(100);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
