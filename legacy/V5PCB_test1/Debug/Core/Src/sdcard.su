@@ -1,3 +1,0 @@
-../Core/Src/sdcard.c:36:6:myprintf	4	static
-../Core/Src/sdcard.c:52:9:SDCard_file_write	32	static
-../Core/Src/sdcard.c:79:9:SDCard_file_flush_line_check	24	static
