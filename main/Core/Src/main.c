@@ -120,15 +120,17 @@ int main(void)
   /* USER CODE BEGIN 2 */
   printf("Beginning initialization...\r\n");
 
+  printf("Configuring BME280...\r\n");
   if (BME280_Config(OSRS_2, OSRS_16, OSRS_1, MODE_NORMAL, T_SB_0p5, IIR_16) != 0)
   {
-    printf("BME280 temperature sensor configuration error.");
+    printf("BME280 temperature sensor configuration error.\r\n");
     Error_Handler();
   }
 
+  printf("Initializing Peltier cooler PWM output...\r\n");
   if (!PL_Peltier_Init(&peltier, &htim4, &htim3, TIM_CHANNEL_1, TIM_CHANNEL_1))
   {
-    printf("Peltier cooler configuration error.");
+    printf("Peltier cooler initialization error.\r\n");
     Error_Handler();
   }
   // Start duty cycle at zero
@@ -138,6 +140,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  printf("Beginning main loop.\r\n");
   while (1)
   {
 	  printf("Time: %ld\r\n", HAL_GetTick());
