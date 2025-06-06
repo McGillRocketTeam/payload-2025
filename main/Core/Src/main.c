@@ -31,7 +31,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ADC_BUFFER_SIZE 4096
+#define ADC_BUFFER_SIZE 4096 * 3
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -44,8 +44,6 @@ ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
 ADC_HandleTypeDef hadc3;
 DMA_HandleTypeDef hdma_adc1;
-DMA_HandleTypeDef hdma_adc2;
-DMA_HandleTypeDef hdma_adc3;
 
 CAN_HandleTypeDef hcan1;
 
@@ -58,9 +56,7 @@ TIM_HandleTypeDef htim4;
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
-uint16_t adc_1_buf[ADC_BUFFER_SIZE];
-uint16_t adc_2_buf[ADC_BUFFER_SIZE];
-uint16_t adc_3_buf[ADC_BUFFER_SIZE];
+uint16_t adc_buf[ADC_BUFFER_SIZE];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -129,17 +125,24 @@ int main(void)
 
   HAL_TIM_Base_Start_IT(&htim2);
 
-  if (HAL_OK != HAL_ADC_Start_DMA(&hadc1, (uint32_t *) adc_1_buf, ADC_BUFFER_SIZE))
-  {
-	  printf("ADC1 start error\r\n");
-  }
-  if (HAL_OK != HAL_ADC_Start_DMA(&hadc2, (uint32_t *) adc_2_buf, ADC_BUFFER_SIZE))
+  // Allow ADC2 injected conversion to be manually and not automatically triggered
+  // TODO: Not sure if this is needed
+  ADC2->CR1 &= ~ADC_CR1_JAUTO;
+
+  if (HAL_ADC_Start(&hadc2) != HAL_OK)
   {
 	  printf("ADC2 start error\r\n");
+	  Error_Handler();
   }
-  if (HAL_OK != HAL_ADC_Start_DMA(&hadc3, (uint32_t *) adc_3_buf, ADC_BUFFER_SIZE))
+  if (HAL_ADC_Start(&hadc3) != HAL_OK)
   {
 	  printf("ADC3 start error\r\n");
+	  Error_Handler();
+  }
+  if (HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t *) adc_buf, ADC_BUFFER_SIZE) != HAL_OK)
+  {
+	  printf("ADC1 start error\r\n");
+	  Error_Handler();
   }
   /* USER CODE END 2 */
 
@@ -148,7 +151,29 @@ int main(void)
   while (1)
   {
 	  printf("Time: %ld\r\n", HAL_GetTick());
-//	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+
+	  if (HAL_ADCEx_InjectedStart(&hadc1) != HAL_OK)
+	  {
+		  printf("ADC1 injected start error\r\n");
+		  Error_Handler();
+	  }
+
+	  if (HAL_ADCEx_InjectedPollForConversion(&hadc1, HAL_MAX_DELAY) != HAL_OK)
+	  {
+		  printf("ADC1 injected poll error\r\n");
+		  Error_Handler();
+	  }
+	  uint32_t battery = HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
+
+	  if (HAL_ADCEx_InjectedPollForConversion(&hadc2, HAL_MAX_DELAY) != HAL_OK)
+	  {
+		  printf("ADC2 injected poll error\r\n");
+		  Error_Handler();
+	  }
+	  uint32_t current = HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
+
+	  printf("Injected conversion: %ld battery, %ld current\r\n", battery, current);
 	  HAL_Delay(1000);
     /* USER CODE END WHILE */
 
@@ -216,7 +241,9 @@ static void MX_ADC1_Init(void)
 
   /* USER CODE END ADC1_Init 0 */
 
+  ADC_MultiModeTypeDef multimode = {0};
   ADC_ChannelConfTypeDef sConfig = {0};
+  ADC_InjectionConfTypeDef sConfigInjected = {0};
 
   /* USER CODE BEGIN ADC1_Init 1 */
 
@@ -227,16 +254,26 @@ static void MX_ADC1_Init(void)
   hadc1.Instance = ADC1;
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc1.Init.ScanConvMode = ENABLE;
+  hadc1.Init.ScanConvMode = DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISINGFALLING;
   hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T2_TRGO;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 2;
+  hadc1.Init.NbrOfConversion = 1;
   hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure the ADC multi-mode
+  */
+  multimode.Mode = ADC_TRIPLEMODE_REGSIMULT_INJECSIMULT;
+  multimode.DMAAccessMode = ADC_DMAACCESSMODE_1;
+  multimode.TwoSamplingDelay = ADC_TWOSAMPLINGDELAY_5CYCLES;
+  if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
   {
     Error_Handler();
   }
@@ -251,11 +288,18 @@ static void MX_ADC1_Init(void)
     Error_Handler();
   }
 
-  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
-  sConfig.Channel = ADC_CHANNEL_2;
-  sConfig.Rank = 2;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  sConfigInjected.InjectedChannel = ADC_CHANNEL_2;
+  sConfigInjected.InjectedRank = 1;
+  sConfigInjected.InjectedNbrOfConversion = 1;
+  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfigInjected.ExternalTrigInjecConvEdge = ADC_EXTERNALTRIGINJECCONVEDGE_NONE;
+  sConfigInjected.ExternalTrigInjecConv = ADC_INJECTED_SOFTWARE_START;
+  sConfigInjected.AutoInjectedConv = DISABLE;
+  sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
+  sConfigInjected.InjectedOffset = 0;
+  if (HAL_ADCEx_InjectedConfigChannel(&hadc1, &sConfigInjected) != HAL_OK)
   {
     Error_Handler();
   }
@@ -278,6 +322,7 @@ static void MX_ADC2_Init(void)
   /* USER CODE END ADC2_Init 0 */
 
   ADC_ChannelConfTypeDef sConfig = {0};
+  ADC_InjectionConfTypeDef sConfigInjected = {0};
 
   /* USER CODE BEGIN ADC2_Init 1 */
 
@@ -291,11 +336,9 @@ static void MX_ADC2_Init(void)
   hadc2.Init.ScanConvMode = ENABLE;
   hadc2.Init.ContinuousConvMode = DISABLE;
   hadc2.Init.DiscontinuousConvMode = DISABLE;
-  hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISINGFALLING;
-  hadc2.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T2_TRGO;
   hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc2.Init.NbrOfConversion = 2;
-  hadc2.Init.DMAContinuousRequests = ENABLE;
+  hadc2.Init.NbrOfConversion = 1;
+  hadc2.Init.DMAContinuousRequests = DISABLE;
   hadc2.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc2) != HAL_OK)
   {
@@ -304,7 +347,7 @@ static void MX_ADC2_Init(void)
 
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
-  sConfig.Channel = ADC_CHANNEL_9;
+  sConfig.Channel = ADC_CHANNEL_12;
   sConfig.Rank = 1;
   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
@@ -312,11 +355,16 @@ static void MX_ADC2_Init(void)
     Error_Handler();
   }
 
-  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
-  sConfig.Channel = ADC_CHANNEL_12;
-  sConfig.Rank = 2;
-  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
+  sConfigInjected.InjectedChannel = ADC_CHANNEL_9;
+  sConfigInjected.InjectedRank = 1;
+  sConfigInjected.InjectedNbrOfConversion = 1;
+  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_112CYCLES;
+  sConfigInjected.AutoInjectedConv = ENABLE;
+  sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
+  sConfigInjected.InjectedOffset = 0;
+  if (HAL_ADCEx_InjectedConfigChannel(&hadc2, &sConfigInjected) != HAL_OK)
   {
     Error_Handler();
   }
@@ -352,11 +400,9 @@ static void MX_ADC3_Init(void)
   hadc3.Init.ScanConvMode = DISABLE;
   hadc3.Init.ContinuousConvMode = DISABLE;
   hadc3.Init.DiscontinuousConvMode = DISABLE;
-  hadc3.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISINGFALLING;
-  hadc3.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T2_TRGO;
   hadc3.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc3.Init.NbrOfConversion = 1;
-  hadc3.Init.DMAContinuousRequests = ENABLE;
+  hadc3.Init.DMAContinuousRequests = DISABLE;
   hadc3.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc3) != HAL_OK)
   {
@@ -638,12 +684,6 @@ static void MX_DMA_Init(void)
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
-  /* DMA2_Stream1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
-  /* DMA2_Stream2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
 
 }
 
@@ -720,58 +760,28 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 {
-//	uint32_t time = HAL_GetTick();
-//	uint8_t adc_num;
-//	uint16_t *buf;
-//	if (hadc == &hadc1)
-//	{
-//		adc_num = 1;
-//		buf = adc_1_buf;
-//	}
-//	else if (hadc == &hadc2)
-//	{
-//		adc_num = 2;
-//		buf = adc_2_buf;
-//	}
-//	else if (hadc == &hadc3)
-//	{
-//		adc_num = 3;
-//		buf = adc_3_buf;
-//	}
-//	printf("ADC%d half complete, %ld\r\n", adc_num, time);
-//	for (int i = 0; i < ADC_BUFFER_SIZE / 2; i += 2)
-//	{
-//		printf("%d,", buf[i]);
-//	}
-//	printf("\r\n");
+	if (hadc == &hadc1)
+	{
+		printf("ADC buffer half complete, %ld\r\n", HAL_GetTick());
+		for (int i = 0; i < ADC_BUFFER_SIZE / 2; i += 3)
+		{
+			printf("%d,%d,%d|", adc_buf[i], adc_buf[i + 1], adc_buf[i + 2]);
+		}
+		printf("\r\n");
+	}
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
-	uint32_t time = HAL_GetTick();
-	uint8_t adc_num;
-	uint16_t *buf;
 	if (hadc == &hadc1)
 	{
-		adc_num = 1;
-		buf = adc_1_buf;
+		printf("ADC buffer complete, %ld\r\n", HAL_GetTick());
+		for (int i = ADC_BUFFER_SIZE / 2; i < ADC_BUFFER_SIZE; i += 3)
+		{
+			printf("%d,%d,%d|", adc_buf[i], adc_buf[i + 1], adc_buf[i + 2]);
+		}
+		printf("\r\n");
 	}
-	else if (hadc == &hadc2)
-	{
-		adc_num = 2;
-		buf = adc_2_buf;
-	}
-	else if (hadc == &hadc3)
-	{
-		adc_num = 3;
-		buf = adc_3_buf;
-	}
-	printf("ADC%d complete, %ld\r\n", adc_num, time);
-	for (int i = ADC_BUFFER_SIZE / 2; i < ADC_BUFFER_SIZE; i += 2)
-	{
-		printf("%d,", buf[i]);
-	}
-	printf("\r\n");
 }
 /* USER CODE END 4 */
 
