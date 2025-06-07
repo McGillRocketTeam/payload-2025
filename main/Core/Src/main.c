@@ -124,7 +124,12 @@ int main(void)
   /* USER CODE BEGIN 2 */
   printf("Beginning initialization...\r\n");
 
-  printf("Initializing blinking routine. \r\n");
+  for (int i = 0; i < 25, i++){
+    HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+    HAL_Delay(200);
+  }
+
+    printf("Initializing blinking routine. \r\n");
   HAL_TIM_Base_Start_IT(&htim2);
 
   printf("Configuring BME280...\r\n");
