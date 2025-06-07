@@ -1,0 +1,59 @@
+/*
+ * ADC.h
+ *
+ *  Created on: Jun 7, 2025
+ *      Author: akash
+ */
+
+#ifndef INC_ADC_H_
+#define INC_ADC_H_
+
+#include "stm32f4xx_hal.h"
+#include <stdbool.h>
+
+typedef struct
+{
+	ADC_HandleTypeDef *hadc1;
+	ADC_HandleTypeDef *hadc2;
+	ADC_HandleTypeDef *hadc3;
+	uint16_t vbat_sample;
+	uint16_t current_sample;
+} PL_ACD_Handler;
+
+/**
+ * @brief Initializes the ADC handler and starts the ADCs in triple combined regular simultaneous + injected simultaneous mode.
+ * @param adc Pointer to the ADC handler structure.
+ * @param hadc1 Pointer to the first ADC handle.
+ * @param hadc2 Pointer to the second ADC handle.
+ * @param hadc3 Pointer to the third ADC handle.
+ * @return true if initialization is successful, false otherwise.
+ */
+bool PL_ADC_Init(PL_ACD_Handler *adc, ADC_HandleTypeDef *hadc1, ADC_HandleTypeDef *hadc2, ADC_HandleTypeDef *hadc3);
+/**
+ * @brief Stops the ADCs.
+ * @param adc Pointer to the ADC handler structure.
+ * @return true if deinitialization is successful, false otherwise.
+ */
+bool PL_ADC_Deinit(PL_ACD_Handler *adc);
+
+/**
+ * @brief Performs an injected conversion on the ADCs, sampling the battery voltage and current channels.
+ * This function should be called after the ADCs have been initialized and started.
+ * @param adc Pointer to the ADC handler structure.
+ * @return true if the injected conversion is successful, false otherwise.
+ */
+bool PL_ADC_InjectedConversion(PL_ACD_Handler *adc);
+/**
+ * @brief Calculated the battery voltage based off of the last sampled value from the ADC.
+ * @param adc Pointer to the ADC handler structure.
+ * @return The battery voltage in volts.
+ */
+float PL_ADC_GetBatteryVoltage(PL_ACD_Handler *adc);
+/**
+ * @brief Calculates the cooler current based off of the last sampled value from the ADC.
+ * @param adc Pointer to the ADC handler structure.
+ * @return The cooler current in amps.
+ */
+float PL_ADC_GetCoolerCurrent(PL_ACD_Handler *adc);
+
+#endif /* INC_ADC_H_ */
