@@ -39,6 +39,7 @@ bool PL_ADC_Deinit(PL_ACD_Handler *adc);
 /**
  * @brief Performs an injected conversion on the ADCs, sampling the battery voltage and current channels.
  * This function should be called after the ADCs have been initialized and started.
+ * This function should be called in the timer interrupt callback or in a periodic task to sample the battery voltage and current.
  * @param adc Pointer to the ADC handler structure.
  * @return true if the injected conversion is successful, false otherwise.
  */
