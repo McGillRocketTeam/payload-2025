@@ -21,6 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "enabled.h"
 #include "serial_monitor.h"
 #include "peltier.h"
 #include "BME280.h"
@@ -124,11 +125,13 @@ int main(void)
   /* USER CODE BEGIN 2 */
   printf("Beginning initialization...\r\n");
 
+#if FINAL_BUILD
   // Flash for 5 seconds at the start
   for (int i = 0; i < 50; i++){
    HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
    HAL_Delay(100);
   }
+#endif
   // Initializing blinking routine
   HAL_TIM_Base_Start_IT(&htim9);
 
