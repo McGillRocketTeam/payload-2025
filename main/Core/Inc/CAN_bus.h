@@ -65,6 +65,7 @@ enum command_type
     RESET_PAYLOAD = 0x05, // Reset payload
     TOGGLE_SAMPLING = 0x11, // Toggle payload sampling
     TOGGLE_COOLER = 0x18, // Toggle peltier cooler
+	TOGGLE_LAUNCH_MODE = 0x33,
     LANDED = 0x17,
     SET_TEMPERATURE = 0x19, // Set target temperature. There are 8 possible temperature values. Encoded as 0-7.
     NONE = -1,
@@ -90,7 +91,6 @@ struct CAN_bus_handler
 {
 	CAN_HandleTypeDef *hcan;
     CAN_TxHeaderTypeDef Tx_headers[N_MESSAGES];
-    uint32_t Tx_mailbox;
     CAN_RxHeaderTypeDef Rx_header;
     uint8_t Rx_data[8];
     bool command_ready;
@@ -98,7 +98,7 @@ struct CAN_bus_handler
 
 bool CAN_bus_init(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan, uint32_t base_id);
 
-bool CAN_bus_receieve(struct CAN_bus_handler *c);
+bool CAN_bus_receive(struct CAN_bus_handler *c);
 
 struct command CAN_bus_parse_command(struct CAN_bus_handler *c);
 
@@ -110,9 +110,9 @@ bool CAN_bus_send(
     uint8_t target_temp,
     uint16_t current_temp,
     uint8_t battery_voltage,
-    uint16_t frquency_x,
-    uint16_t frquency_y,
-    uint16_t frquency_z,
+    uint16_t frequency_x,
+    uint16_t frequency_y,
+    uint16_t frequency_z,
     uint16_t amplitude_x,
     uint16_t amplitude_y,
     uint16_t amplitude_z,

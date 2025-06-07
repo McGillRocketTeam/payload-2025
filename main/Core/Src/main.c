@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <stdlib.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -75,6 +76,20 @@ static void MX_UART4_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+CAN_TxHeaderTypeDef TxHeader;
+CAN_RxHeaderTypeDef RxHeader;
+
+uint32_t TxMailbox[4];
+uint8_t TxData[4];
+
+uint8_t RxData[8];
+
+uint8_t count = 0;
+
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
+{
+	CAN_bus_receive(&CAN_bus);
+}
 
 /* USER CODE END 0 */
 
@@ -119,16 +134,40 @@ int main(void)
   printf("Beginning initialization...\r\n");
 
   CAN_bus_init(&CAN_bus, &hcan1, 0x300);
+  HAL_Delay(100);
+
+   TxHeader.DLC = 1;
+   TxHeader.ExtId = 0;
+   TxHeader.IDE = CAN_ID_STD;
+   TxHeader.RTR = CAN_RTR_DATA;
+   TxHeader.StdId = 0x111;
+   TxHeader.TransmitGlobalTime = DISABLE;
+
+   HAL_Delay(100);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  printf("Time: %ld\r\n", HAL_GetTick());
-	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-	  CAN_bus_send(&CAN_bus, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-	  HAL_Delay(1000);
+//	  printf("Time: %ld\r\n", HAL_GetTick());
+//	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+//	  CAN_bus_send(&CAN_bus, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+//	  HAL_Delay(1000);
+
+	  bool check = CAN_bus_send(&CAN_bus,true,true,true,3,2,11,12,13,14,2,3,4,5);
+	  if (check){
+		  union CAN_msg_1_u *message=malloc(sizeof(union CAN_msg_1_u));
+		  memcpy(message, CAN_bus.Rx_data, sizeof(union CAN_msg_1_u));
+
+		  if (message->msg.battery_voltage==11){
+			  printf("message correct");
+			  HAL_Delay(100);
+
+	  	  }
+	  }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -148,7 +187,7 @@ void SystemClock_Config(void)
   /** Configure the main internal regulator output voltage
   */
   __HAL_RCC_PWR_CLK_ENABLE();
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
@@ -158,9 +197,9 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 16;
-  RCC_OscInitStruct.PLL.PLLN = 336;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLN = 168;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 2;
   RCC_OscInitStruct.PLL.PLLR = 2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
@@ -174,10 +213,10 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
   {
     Error_Handler();
   }
@@ -204,7 +243,7 @@ static void MX_ADC1_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV6;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
@@ -256,7 +295,7 @@ static void MX_ADC2_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc2.Instance = ADC2;
-  hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV6;
   hadc2.Init.Resolution = ADC_RESOLUTION_12B;
   hadc2.Init.ScanConvMode = DISABLE;
   hadc2.Init.ContinuousConvMode = DISABLE;
@@ -308,7 +347,7 @@ static void MX_ADC3_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc3.Instance = ADC3;
-  hadc3.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc3.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV6;
   hadc3.Init.Resolution = ADC_RESOLUTION_12B;
   hadc3.Init.ScanConvMode = DISABLE;
   hadc3.Init.ContinuousConvMode = DISABLE;
@@ -355,11 +394,11 @@ static void MX_CAN1_Init(void)
 
   /* USER CODE END CAN1_Init 1 */
   hcan1.Instance = CAN1;
-  hcan1.Init.Prescaler = 16;
-  hcan1.Init.Mode = CAN_MODE_NORMAL;
+  hcan1.Init.Prescaler = 20;
+  hcan1.Init.Mode = CAN_MODE_LOOPBACK;
   hcan1.Init.SyncJumpWidth = CAN_SJW_1TQ;
-  hcan1.Init.TimeSeg1 = CAN_BS1_1TQ;
-  hcan1.Init.TimeSeg2 = CAN_BS2_1TQ;
+  hcan1.Init.TimeSeg1 = CAN_BS1_12TQ;
+  hcan1.Init.TimeSeg2 = CAN_BS2_8TQ;
   hcan1.Init.TimeTriggeredMode = DISABLE;
   hcan1.Init.AutoBusOff = DISABLE;
   hcan1.Init.AutoWakeUp = DISABLE;
@@ -371,6 +410,20 @@ static void MX_CAN1_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN CAN1_Init 2 */
+  CAN_FilterTypeDef canfilterconfig;
+
+      canfilterconfig.FilterActivation = CAN_FILTER_ENABLE;
+      canfilterconfig.FilterBank = 10;  // anything between 0 to SlaveStartFilterBank
+      canfilterconfig.FilterFIFOAssignment = CAN_RX_FIFO0;
+      canfilterconfig.FilterIdHigh = 0;
+      canfilterconfig.FilterIdLow = 0x0000;
+      canfilterconfig.FilterMaskIdHigh = 0;
+      canfilterconfig.FilterMaskIdLow = 0x0000;
+      canfilterconfig.FilterMode = CAN_FILTERMODE_IDMASK;
+      canfilterconfig.FilterScale = CAN_FILTERSCALE_32BIT;
+      canfilterconfig.SlaveStartFilterBank = 13;  // 13 to 27 are assigned to slave CAN (CAN 2) OR 0 to 12 are assgned to CAN1
+
+      HAL_CAN_ConfigFilter(&hcan1, &canfilterconfig);
 
   /* USER CODE END CAN1_Init 2 */
 
@@ -612,10 +665,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
-{
-	CAN_bus_receive(&CAN_bus);
-}
+
 /* USER CODE END 4 */
 
 /**
