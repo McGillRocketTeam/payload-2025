@@ -25,6 +25,7 @@
 #include "serial_monitor.h"
 #include "peltier.h"
 #include "BME280.h"
+#include "blink.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -34,8 +35,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define FINAL_INIT_BLINK_TIME 5000 // milliseconds
-#define FINAL_INIT_BLINK_PERIOD 10
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -60,10 +60,9 @@ UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
 PL_Peltier_Handler peltier;
+PL_Blink_Handler blink;
 
 float temperature, pressure, humidity;
-
-uint8_t blink_count;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -128,9 +127,12 @@ int main(void)
   /* USER CODE BEGIN 2 */
   printf("Beginning initialization...\r\n");
 
-  // Initializing blinking routine
-  blink_count = 0;
-  HAL_TIM_Base_Start_IT(&htim9);
+  PL_Blink_Init(&blink, &htim9, LD1_GPIO_Port, LD1_Pin);
+  if (!PL_Blink_Start(&blink))
+  {
+    printf("Blink start error.\r\n");
+    Error_Handler();
+  }
 
   printf("Configuring BME280...\r\n");
   if (BME280_Config(OSRS_2, OSRS_16, OSRS_1, MODE_NORMAL, T_SB_0p5, IIR_16) != 0)
@@ -682,22 +684,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM9)
   {
-#if FINAL_BUILD
-	  if (HAL_GetTick() <= FINAL_INIT_BLINK_TIME)
-	  {
-		  HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
-	  }
-#endif
-	  /*
-	   * If final build is not enabled, or if the initialization time has passed,
-	   * only blink the LED every certain number of times the timer interrupt is triggered.
-	   */
-	  if (blink_count == 0)
-	  {
-		  HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
-	  }
-	  blink_count++;
-	  blink_count %= FINAL_INIT_BLINK_PERIOD;
+    PL_Blink_Toggle(&blink);
   }
 }
 /* USER CODE END 4 */
