@@ -34,7 +34,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define FINAL_INIT_BLINK_TIME 5000 // milliseconds
+#define FINAL_INIT_BLINK_PERIOD 10
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -61,6 +62,8 @@ UART_HandleTypeDef huart4;
 PL_Peltier_Handler peltier;
 
 float temperature, pressure, humidity;
+
+uint8_t blink_count;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -125,14 +128,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
   printf("Beginning initialization...\r\n");
 
-#if FINAL_BUILD
-  // Flash for 5 seconds at the start
-  for (int i = 0; i < 50; i++){
-   HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
-   HAL_Delay(100);
-  }
-#endif
   // Initializing blinking routine
+  blink_count = 0;
   HAL_TIM_Base_Start_IT(&htim9);
 
   printf("Configuring BME280...\r\n");
@@ -559,7 +556,7 @@ static void MX_TIM9_Init(void)
   htim9.Instance = TIM9;
   htim9.Init.Prescaler = 7200-1;
   htim9.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim9.Init.Period = 10000-1;
+  htim9.Init.Period = 1000-1;
   htim9.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim9.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim9) != HAL_OK)
@@ -685,7 +682,22 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM9)
   {
-    HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
+#if FINAL_BUILD
+	  if (HAL_GetTick() <= FINAL_INIT_BLINK_TIME)
+	  {
+		  HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
+	  }
+#endif
+	  /*
+	   * If final build is not enabled, or if the initialization time has passed,
+	   * only blink the LED every certain number of times the timer interrupt is triggered.
+	   */
+	  if (blink_count == 0)
+	  {
+		  HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
+	  }
+	  blink_count++;
+	  blink_count %= FINAL_INIT_BLINK_PERIOD;
   }
 }
 /* USER CODE END 4 */
