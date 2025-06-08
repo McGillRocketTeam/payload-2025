@@ -13,5 +13,16 @@
 #define CAN_BUS_ENABLED 1
 #define SD_CARD_ENABLED 1
 #define SERIAL_MONITOR_ENABLED 1
+#define ADC_ENABLED 1
+// Automatically disable accelerometer if ADC is disabled
+#if ADC_ENABLED
+#define ACCELEROMETER_ENABLED 1 // Change this value to toggle accelerometer 
+#else
+/*
+ * Disable accelerometer if ADC is disabled
+ * DO NOT CHANGE THIS!
+*/
+#define ACCELEROMETER_ENABLED 0 // 
+#endif
 
 #endif

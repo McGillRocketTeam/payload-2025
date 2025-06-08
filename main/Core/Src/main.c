@@ -22,6 +22,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "serial_monitor.h"
+#include "ADC.h"
+#include "accelerometer.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,7 +33,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ADC_BUFFER_SIZE 4096 * 3
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -56,7 +58,9 @@ TIM_HandleTypeDef htim8;
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
-uint16_t adc_buf[ADC_BUFFER_SIZE];
+PL_ADC_Handler adc;
+
+uint16_t accelerometer_buffer[ACCELEROMETER_SAMPLE_SIZE_TRIPLE];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -125,24 +129,11 @@ int main(void)
 
   HAL_TIM_Base_Start_IT(&htim8);
 
-  // Allow ADC2 injected conversion to be manually and not automatically triggered
-  // TODO: Not sure if this is needed
-  ADC2->CR1 &= ~ADC_CR1_JAUTO;
-
-  if (HAL_ADC_Start(&hadc2) != HAL_OK)
+  // Initialize ADCs
+  if (!PL_ADC_Init(&adc, &hadc1, &hadc2, &hadc3, accelerometer_buffer))
   {
-	  printf("ADC2 start error\r\n");
-	  Error_Handler();
-  }
-  if (HAL_ADC_Start(&hadc3) != HAL_OK)
-  {
-	  printf("ADC3 start error\r\n");
-	  Error_Handler();
-  }
-  if (HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t *) adc_buf, ADC_BUFFER_SIZE) != HAL_OK)
-  {
-	  printf("ADC1 start error\r\n");
-	  Error_Handler();
+    printf("ADC initialization failed\r\n");
+    Error_Handler();
   }
   /* USER CODE END 2 */
 
@@ -764,11 +755,11 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 	if (hadc == &hadc1)
 	{
 		printf("ADC buffer half complete, %ld\r\n", HAL_GetTick());
-		for (int i = 0; i < ADC_BUFFER_SIZE / 2; i += 3)
-		{
-			printf("%d,%d,%d|", adc_buf[i], adc_buf[i + 1], adc_buf[i + 2]);
-		}
-		printf("\r\n");
+		// for (int i = 0; i < ADC_BUFFER_SIZE / 2; i += 3)
+		// {
+		// 	printf("%d,%d,%d|", adc_buf[i], adc_buf[i + 1], adc_buf[i + 2]);
+		// }
+		// printf("\r\n");
 	}
 }
 
@@ -777,11 +768,11 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 	if (hadc == &hadc1)
 	{
 		printf("ADC buffer complete, %ld\r\n", HAL_GetTick());
-		for (int i = ADC_BUFFER_SIZE / 2; i < ADC_BUFFER_SIZE; i += 3)
-		{
-			printf("%d,%d,%d|", adc_buf[i], adc_buf[i + 1], adc_buf[i + 2]);
-		}
-		printf("\r\n");
+		// for (int i = ADC_BUFFER_SIZE / 2; i < ADC_BUFFER_SIZE; i += 3)
+		// {
+		// 	printf("%d,%d,%d|", adc_buf[i], adc_buf[i + 1], adc_buf[i + 2]);
+		// }
+		// printf("\r\n");
 	}
 }
 /* USER CODE END 4 */

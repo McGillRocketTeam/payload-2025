@@ -13,7 +13,7 @@
 
 #define ACCELEROMETER_SAMPLE_SIZE_SINGLE 4096
 #define ACCELEROMETER_SAMPLE_SIZE_TRIPLE (ACCELEROMETER_SAMPLE_SIZE_SINGLE * 3)
-#define FFT_SIZE_SINGLE 2048
+#define FFT_SIZE_SINGLE (ACCELEROMETER_SAMPLE_SIZE_SINGLE / 2)
 
 #define SAMPLE_RATE_HZ 10000
 
@@ -32,7 +32,7 @@ typedef struct {
  * @param power_GPIO_Port GPIO port for the accelerometer power control pin.
  * @param power_Pin GPIO pin for the accelerometer power control.
  */
-bool PL_Accelerometer_Init(PL_Accelerometer_Handler *accel, HAL_TimerHandleTypeDef *timer, GPIO_TypeDef *power_GPIO_Port, uint16_t power_Pin, uint16_t *sample_buffer);
+bool PL_Accelerometer_Init(PL_Accelerometer_Handler *accel, TIM_HandleTypeDef *timer, GPIO_TypeDef *power_GPIO_Port, uint16_t power_Pin, uint16_t *sample_buffer);
 /**
  * @brief Powers on the accelerometers and starts the triple conversion trigger timer.
  * @param accel Pointer to the accelerometer handler structure.
