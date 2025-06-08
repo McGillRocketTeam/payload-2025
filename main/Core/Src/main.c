@@ -59,8 +59,17 @@ UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
 PL_ADC_Handler adc;
+PL_Accelerometer_Handler accelerometer;
 
+// Accelerometer buffer which DMA will write to
 uint16_t accelerometer_buffer[ACCELEROMETER_SAMPLE_SIZE_TRIPLE];
+// FFT buffers for accelerometer data
+uint16_t accelerometer_fft_buffer_x[FFT_SIZE_SINGLE], 
+  accelerometer_fft_buffer_y[FFT_SIZE_SINGLE],
+  accelerometer_fft_buffer_z[FFT_SIZE_SINGLE];
+float accelerometer_amplitudes_x[FFT_AMPLITUDE_SIZE],
+  accelerometer_amplitudes_y[FFT_AMPLITUDE_SIZE],
+  accelerometer_amplitudes_z[FFT_AMPLITUDE_SIZE];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -127,12 +136,19 @@ int main(void)
   /* USER CODE BEGIN 2 */
   printf("Beginning initialization...\r\n");
 
-  HAL_TIM_Base_Start_IT(&htim8);
-
   // Initialize ADCs
   if (!PL_ADC_Init(&adc, &hadc1, &hadc2, &hadc3, accelerometer_buffer))
   {
-    printf("ADC initialization failed\r\n");
+    printf("ADC initialization error\r\n");
+    Error_Handler();
+  }
+
+  // Initialize accelerometer handler
+  PL_Accelerometer_Init(&accelerometer, &htim3, ACCEL_POWER_GPIO_Port, ACCEL_POWER_Pin, accelerometer_fft_buffer_x, accelerometer_fft_buffer_y, accelerometer_fft_buffer_z);
+  // Start the accelerometer
+  if (!PL_Accelerometer_Start(&accelerometer))
+  {
+    printf("Accelerometer start error\r\n");
     Error_Handler();
   }
   /* USER CODE END 2 */
@@ -147,7 +163,11 @@ int main(void)
     // TODO: Convert injected conversions to be software triggered by a timer interrupt or by a timer trigger output
 	  PL_ADC_InjectedConversion(&adc);
 
-	  printf("Injected conversion: %ld battery, %ld current\r\n", battery, current);
+	  printf(
+      "Injected conversion: %d battery, %d current\r\n",
+      (int) (100 * PL_ADC_GetBatteryVoltage(&adc)),
+      (int) (100 * PL_ADC_GetCoolerCurrent(&adc))
+    );
 	  HAL_Delay(1000);
     /* USER CODE END WHILE */
 
@@ -738,11 +758,7 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 	if (hadc == &hadc1)
 	{
 		printf("ADC buffer half complete, %ld\r\n", HAL_GetTick());
-		// for (int i = 0; i < ADC_BUFFER_SIZE / 2; i += 3)
-		// {
-		// 	printf("%d,%d,%d|", adc_buf[i], adc_buf[i + 1], adc_buf[i + 2]);
-		// }
-		// printf("\r\n");
+		PL_Accelerometer_Record(&accelerometer, accelerometer_buffer);
 	}
 }
 
@@ -751,11 +767,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 	if (hadc == &hadc1)
 	{
 		printf("ADC buffer complete, %ld\r\n", HAL_GetTick());
-		// for (int i = ADC_BUFFER_SIZE / 2; i < ADC_BUFFER_SIZE; i += 3)
-		// {
-		// 	printf("%d,%d,%d|", adc_buf[i], adc_buf[i + 1], adc_buf[i + 2]);
-		// }
-		// printf("\r\n");
+    PL_Accelerometer_Record(&accelerometer, &accelerometer_buffer[FFT_SIZE_TRIPLE]);
 	}
 }
 /* USER CODE END 4 */

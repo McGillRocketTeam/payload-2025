@@ -22,7 +22,7 @@ typedef struct
 
 /**
  * @brief Initializes the ADC handler and starts the ADCs in triple combined regular simultaneous + injected simultaneous mode.
- * Does not start any conversions, just prepares the ADCs for use.
+ * @note Does not start any conversions, just prepares the ADCs for use.
  * @param adc Pointer to the ADC handler structure.
  * @param hadc1 Pointer to the first ADC handle.
  * @param hadc2 Pointer to the second ADC handle.
@@ -40,8 +40,8 @@ bool PL_ADC_Deinit(PL_ADC_Handler *adc);
 
 /**
  * @brief Performs an injected conversion on the ADCs, sampling the battery voltage and current channels.
- * This function should be called after the ADCs have been initialized and started.
- * This function should be called in the timer interrupt callback or in a periodic task to sample the battery voltage and current.
+ * @note This function should be called after the ADCs have been initialized and started.
+ * @note This function should be called in the timer interrupt callback or in a periodic task to sample the battery voltage and current.
  * @param adc Pointer to the ADC handler structure.
  * @return true if the injected conversion is successful, false otherwise.
  */
