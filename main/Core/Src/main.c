@@ -144,25 +144,8 @@ int main(void)
 	  printf("Time: %ld\r\n", HAL_GetTick());
 	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
-	  if (HAL_ADCEx_InjectedStart(&hadc1) != HAL_OK)
-	  {
-		  printf("ADC1 injected start error\r\n");
-		  Error_Handler();
-	  }
-
-	  if (HAL_ADCEx_InjectedPollForConversion(&hadc1, HAL_MAX_DELAY) != HAL_OK)
-	  {
-		  printf("ADC1 injected poll error\r\n");
-		  Error_Handler();
-	  }
-	  uint32_t battery = HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
-
-	  if (HAL_ADCEx_InjectedPollForConversion(&hadc2, HAL_MAX_DELAY) != HAL_OK)
-	  {
-		  printf("ADC2 injected poll error\r\n");
-		  Error_Handler();
-	  }
-	  uint32_t current = HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
+    // TODO: Convert injected conversions to be software triggered by a timer interrupt or by a timer trigger output
+	  PL_ADC_InjectedConversion(&adc);
 
 	  printf("Injected conversion: %ld battery, %ld current\r\n", battery, current);
 	  HAL_Delay(1000);
