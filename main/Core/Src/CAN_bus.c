@@ -8,9 +8,11 @@ temperature temperatures[N_TEMPERATURES] = {1, 5, 10, 15, 20, 25, 30, 37};
 bool CAN_bus_init(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan, uint32_t base_id)
 {
 #if CAN_BUS_ENABLED
-	c->hcan = hcan;
+    // Initialize CAN bus handler
+    c->hcan = hcan;
+    c->command_ready = false;
 
-	// Configure transmit headers for all three messages
+    // Configure transmit headers for all three messages
     for (int i = 0; i < N_MESSAGES; i++)
     {
         c->Tx_headers[i].DLC = 8;
@@ -27,20 +29,21 @@ bool CAN_bus_init(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan, uint32_t b
     bool filter_config_success = true;
     for (int i = 0; i < 6; i++)
     {
-		filter_config.FilterActivation = CAN_FILTER_ENABLE;
-		filter_config.FilterMode = CAN_FILTERMODE_IDMASK;
-		filter_config.FilterScale = CAN_FILTERSCALE_32BIT;
-		filter_config.FilterFIFOAssignment = CAN_RX_FIFO0;
-		filter_config.FilterBank = i;  // anything between 0 to SlaveStartFilterBank
-		filter_config.SlaveStartFilterBank = 13;  // 13 to 27 are assigned to slave CAN (CAN 2) OR 0 to 12 are assgned to CAN1
-		filter_config.FilterIdHigh = command_ids[i] << 5;
-		filter_config.FilterIdLow = 0x0000;
-		filter_config.FilterMaskIdHigh = 0xFFFF << 5;
-		filter_config.FilterMaskIdLow = 0x0000;
-		filter_config_success &= HAL_CAN_ConfigFilter(hcan, &filter_config) == HAL_OK;
+        filter_config.FilterActivation = CAN_FILTER_ENABLE;
+        filter_config.FilterMode = CAN_FILTERMODE_IDMASK;
+        filter_config.FilterScale = CAN_FILTERSCALE_32BIT;
+        filter_config.FilterFIFOAssignment = CAN_RX_FIFO0;
+        filter_config.FilterBank = i;            // anything between 0 to SlaveStartFilterBank
+        filter_config.SlaveStartFilterBank = 13; // 13 to 27 are assigned to slave CAN (CAN 2) OR 0 to 12 are assgned to CAN1
+        filter_config.FilterIdHigh = command_ids[i] << 5;
+        filter_config.FilterIdLow = 0x0000;
+        filter_config.FilterMaskIdHigh = 0xFFFF << 5;
+        filter_config.FilterMaskIdLow = 0x0000;
+
+        filter_config_success &= HAL_CAN_ConfigFilter(hcan, &filter_config) == HAL_OK;
     }
 
-    // Start peripheral and enable receipt callback
+    // Start peripheral and enable message receipt callback
     HAL_StatusTypeDef start_status = HAL_CAN_Start(hcan);
     HAL_StatusTypeDef interrupt_status = HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
     return start_status == HAL_OK && interrupt_status == HAL_OK && filter_config_success;
@@ -52,7 +55,7 @@ bool CAN_bus_init(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan, uint32_t b
 bool CAN_bus_receive(struct CAN_bus_handler *c)
 {
 #if CAN_BUS_ENABLED
-	bool received = HAL_CAN_GetRxMessage(c->hcan, CAN_RX_FIFO0, &(c->Rx_header), c->Rx_data) == HAL_OK;
+    bool received = HAL_CAN_GetRxMessage(c->hcan, CAN_RX_FIFO0, &(c->Rx_header), c->Rx_data) == HAL_OK;
     c->command_ready = received;
     return received;
 #else
@@ -73,7 +76,7 @@ struct command CAN_bus_parse_command(struct CAN_bus_handler *c)
         {
         case RESET_PAYLOAD:
             com.type = RESET_PAYLOAD;
-        	break;
+            break;
         case TOGGLE_SAMPLING:
             com.type = TOGGLE_SAMPLING;
             data.on = c->Rx_data[0];
@@ -83,12 +86,12 @@ struct command CAN_bus_parse_command(struct CAN_bus_handler *c)
             data.on = c->Rx_data[0];
             break;
         case TOGGLE_LAUNCH_MODE:
-        	com.type = TOGGLE_LAUNCH_MODE;
-        	data.on = c->Rx_data[0];
-        	break;
+            com.type = TOGGLE_LAUNCH_MODE;
+            data.on = c->Rx_data[0];
+            break;
         case LANDED:
             com.type = LANDED;
-        	break;
+            break;
         case SET_TEMPERATURE:
             com.type = SET_TEMPERATURE;
             if (c->Rx_data[0] < N_TEMPERATURES)
@@ -159,28 +162,26 @@ bool CAN_bus_send(
     uint32_t Tx_mailbox;
 
     status1 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[0]), msg1_u.bytes, &Tx_mailbox);
-    uint32_t time_message_sent=HAL_GetTick();
-	uint32_t current;
-	do {
-		current = HAL_GetTick();
-	} while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox)
-			&& current - time_message_sent < CAN_SEND_TIMEOUT);
+    uint32_t time_message_sent = HAL_GetTick();
+    uint32_t current;
+    do
+    {
+        current = HAL_GetTick();
+    } while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox) && current - time_message_sent < CAN_SEND_TIMEOUT);
 
-	status2 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[1]), msg2_u.bytes,
-			&Tx_mailbox);
-	time_message_sent = HAL_GetTick();
-	do {
-		current = HAL_GetTick();
-	} while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox)
-			&& current - time_message_sent < CAN_SEND_TIMEOUT);
+    status2 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[1]), msg2_u.bytes, &Tx_mailbox);
+    time_message_sent = HAL_GetTick();
+    do
+    {
+        current = HAL_GetTick();
+    } while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox) && current - time_message_sent < CAN_SEND_TIMEOUT);
 
-	status3 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[2]), msg3_u.bytes,
-			&Tx_mailbox);
-	time_message_sent = HAL_GetTick();
-	do {
-		current = HAL_GetTick();
-	} while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox)
-			&& current - time_message_sent < CAN_SEND_TIMEOUT);
+    status3 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[2]), msg3_u.bytes, &Tx_mailbox);
+    time_message_sent = HAL_GetTick();
+    do
+    {
+        current = HAL_GetTick();
+    } while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox) && current - time_message_sent < CAN_SEND_TIMEOUT);
 
     return status1 == HAL_OK && status2 == HAL_OK && status3 == HAL_OK;
 #else
