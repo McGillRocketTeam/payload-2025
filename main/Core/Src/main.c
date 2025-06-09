@@ -130,6 +130,12 @@ int main(void)
     printf("BME280 temperature sensor configuration error.\r\n");
     Error_Handler();
   }
+  // Start temperature sample timer
+  if (HAL_TIM_Base_Start_IT(&htim2) != HAL_OK)
+  {
+    printf("Temperature sample timer start error.\r\n");
+    Error_Handler();
+  }
 
   printf("Initializing Peltier cooler PWM output...\r\n");
   if (!PL_Peltier_Init(&peltier, &htim4, &htim3, TIM_CHANNEL_1, TIM_CHANNEL_1))
@@ -450,9 +456,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 7199;
+  htim2.Init.Prescaler = 7200-1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 9999;
+  htim2.Init.Period = 10000-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -682,16 +688,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM2)
   {
-    // This is triggered every 1 second (based on your prescaler and period)
-
-    if (BME_Measure(&temperature, &pressure, &humidity) != 0)
-    {
-      printf("BME280 measurement failed\r\n");
-    }
-    else
-    {
-      //temperature sensor already measured.
-    }
+    BME280_Measure();
   }
 }
 
