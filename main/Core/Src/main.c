@@ -56,7 +56,7 @@ TIM_HandleTypeDef htim4;
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
-struct CAN_bus_handler CAN_bus;
+struct PL_CANBus_Handler CAN_bus;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -76,13 +76,13 @@ static void MX_UART4_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-struct CAN_bus_handler can;
+struct PL_CANBus_Handler can;
 
 uint32_t TxMailbox;
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
 {
-	CAN_bus_receive(&can);
+	PL_CANBus_Receive(&can);
 }
 
 void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan1)
@@ -174,7 +174,7 @@ int main(void)
 	  printf("activate notification error\r\n");
 	  Error_Handler();
   }
-  if (!CAN_bus_init(&can, &hcan1, 0x200))
+  if (!PL_CANBus_Init(&can, &hcan1, 0x200))
   {
 	  printf("can bus init error\r\n");
 	  Error_Handler();
@@ -187,7 +187,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-		if (!CAN_bus_send(&can,
+		if (!PL_CANBus_Send(&can,
 				count % 2,
 				(count + 1) % 2,
 				count % 2,
@@ -292,7 +292,7 @@ int main(void)
 		count++;
 		count %= 16;
 
-		struct command com = CAN_bus_parse_command(&can);
+		struct command com = PL_CANBus_ParseCommand(&can);
 
 		if (com.type != NONE){
 			char *type;

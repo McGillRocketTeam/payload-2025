@@ -4,7 +4,7 @@
 // Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
 temperature temperatures[N_TEMPERATURES] = {1, 5, 10, 15, 20, 25, 30, 37};
 
-bool CAN_bus_init(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan, uint32_t base_id)
+bool PL_CANBus_Init(struct PL_CANBus_Handler *c, CAN_HandleTypeDef *hcan, uint32_t base_id)
 {
 #if CAN_BUS_ENABLED
     // Initialize CAN bus handler
@@ -51,7 +51,7 @@ bool CAN_bus_init(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan, uint32_t b
 #endif
 }
 
-bool CAN_bus_receive(struct CAN_bus_handler *c)
+bool PL_CANBus_Receive(struct PL_CANBus_Handler *c)
 {
 #if CAN_BUS_ENABLED
     bool received = HAL_CAN_GetRxMessage(c->hcan, CAN_RX_FIFO0, &(c->Rx_header), c->Rx_data) == HAL_OK;
@@ -62,7 +62,7 @@ bool CAN_bus_receive(struct CAN_bus_handler *c)
 #endif
 }
 
-struct command CAN_bus_parse_command(struct CAN_bus_handler *c)
+struct command PL_CANBus_ParseCommand(struct PL_CANBus_Handler *c)
 {
     struct command com;
     com.type = NONE;
@@ -108,8 +108,8 @@ struct command CAN_bus_parse_command(struct CAN_bus_handler *c)
     return com;
 }
 
-bool CAN_bus_send(
-    struct CAN_bus_handler *c,
+bool PL_CANBus_Send(
+    struct PL_CANBus_Handler *c,
     bool ok,
     bool sampling_state,
     bool temperature_control_state,

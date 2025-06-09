@@ -88,7 +88,7 @@ struct command
     union command_data data;
 };
 
-struct CAN_bus_handler
+struct PL_CANBus_Handler
 {
 	CAN_HandleTypeDef *hcan;
     CAN_TxHeaderTypeDef Tx_headers[N_MESSAGES];
@@ -104,7 +104,7 @@ struct CAN_bus_handler
  * @param base_id Base ID for the CAN messages. Message ID is the base ID for the first message, and subsequent messages are assigned sequential IDs.
  * @return true if initialization is successful, false otherwise.
  */
-bool CAN_bus_init(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan, uint32_t base_id);
+bool PL_CANBus_Init(struct PL_CANBus_Handler *c, CAN_HandleTypeDef *hcan, uint32_t base_id);
 
 /**
  * @brief Receives a CAN message and updates the command_ready flag.
@@ -112,7 +112,7 @@ bool CAN_bus_init(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan, uint32_t b
  * @note This function should be called in the CAN receive interrupt callback.
  * @return true if a message was received, false otherwise.
  */
-bool CAN_bus_receive(struct CAN_bus_handler *c);
+bool PL_CANBus_Receive(struct PL_CANBus_Handler *c);
 
 /**
  * @brief Parses the received CAN message and returns the command.
@@ -120,7 +120,7 @@ bool CAN_bus_receive(struct CAN_bus_handler *c);
  * @return A command structure containing the command type and data.
  * @note The command_ready flag must be set to true before calling this function.
  */
-struct command CAN_bus_parse_command(struct CAN_bus_handler *c);
+struct command PL_CANBus_ParseCommand(struct PL_CANBus_Handler *c);
 
 /**
  * @brief Sends a CAN message with the specified parameters.
@@ -143,8 +143,8 @@ struct command CAN_bus_parse_command(struct CAN_bus_handler *c);
  * @note The function will block until the messages are sent or the timeout is reached.
  * @note This function should be called periodically or in a timer interrupt.
  */
-bool CAN_bus_send(
-    struct CAN_bus_handler *c,
+bool PL_CANBus_Send(
+    struct PL_CANBus_Handler *c,
     bool ok,
     bool sampling_state,
     bool temperature_control_state,
