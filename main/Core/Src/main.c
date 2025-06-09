@@ -21,7 +21,6 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "enabled.h"
 #include "serial_monitor.h"
 #include "peltier.h"
 #include "BME280.h"
