@@ -24,6 +24,7 @@
 #include "serial_monitor.h"
 #include "peltier.h"
 #include "BME280.h"
+#include "blink.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,11 +53,13 @@ I2C_HandleTypeDef hi2c3;
 
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
+TIM_HandleTypeDef htim9;
 
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
 PL_Peltier_Handler peltier;
+PL_Blink_Handler blink;
 
 float temperature, pressure, humidity;
 /* USER CODE END PV */
@@ -72,6 +75,7 @@ static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_I2C3_Init(void);
 static void MX_UART4_Init(void);
+static void MX_TIM9_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -118,8 +122,17 @@ int main(void)
   MX_TIM4_Init();
   MX_I2C3_Init();
   MX_UART4_Init();
+  MX_TIM9_Init();
   /* USER CODE BEGIN 2 */
   printf("Beginning initialization...\r\n");
+
+  printf("Starting blinking routine...\r\n");
+  PL_Blink_Init(&blink, &htim9, LD1_GPIO_Port, LD1_Pin);
+  if (!PL_Blink_Start(&blink))
+  {
+    printf("Blink start error.\r\n");
+    Error_Handler();
+  }
 
   printf("Configuring BME280...\r\n");
   if (BME280_Config(OSRS_2, OSRS_16, OSRS_1, MODE_NORMAL, T_SB_0p5, IIR_16) != 0)
@@ -145,7 +158,6 @@ int main(void)
   while (1)
   {
 	  printf("Time: %ld\r\n", HAL_GetTick());
-	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 	  HAL_Delay(1000);
     /* USER CODE END WHILE */
 
@@ -527,6 +539,44 @@ static void MX_TIM4_Init(void)
 }
 
 /**
+  * @brief TIM9 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM9_Init(void)
+{
+
+  /* USER CODE BEGIN TIM9_Init 0 */
+
+  /* USER CODE END TIM9_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+
+  /* USER CODE BEGIN TIM9_Init 1 */
+
+  /* USER CODE END TIM9_Init 1 */
+  htim9.Instance = TIM9;
+  htim9.Init.Prescaler = 7200-1;
+  htim9.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim9.Init.Period = 1000-1;
+  htim9.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim9.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim9) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim9, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM9_Init 2 */
+
+  /* USER CODE END TIM9_Init 2 */
+
+}
+
+/**
   * @brief UART4 Initialization Function
   * @param None
   * @retval None
@@ -630,7 +680,13 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  if (htim->Instance == TIM9)
+  {
+    PL_Blink_Toggle(&blink);
+  }
+}
 /* USER CODE END 4 */
 
 /**

@@ -10,9 +10,13 @@
 #define __ENABLED_H
 
 // Set to 0 to disable a feature
+#define FINAL_BUILD 0
+
 #define CAN_BUS_ENABLED 1
 #define SD_CARD_ENABLED 1
 #define PELTIER_ENABLED 1
 #define SERIAL_MONITOR_ENABLED 1
 #define TEMPERATURE_SENSOR_ENABLED 1
+#define BLINK_ENABLED 1
+
 #endif
