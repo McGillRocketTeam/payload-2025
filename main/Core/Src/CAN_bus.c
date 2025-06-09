@@ -1,11 +1,13 @@
 #include "CAN_bus.h"
 #include "serial_monitor.h"
+#include "enabled.h"
 
 // Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
 temperature temperatures[N_TEMPERATURES] = {1, 5, 10, 15, 20, 25, 30, 37};
 
 bool CAN_bus_init(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan, uint32_t base_id)
 {
+#if CAN_BUS_ENABLED
 	c->hcan = hcan;
 
 	// Configure transmit headers for all three messages
@@ -42,19 +44,28 @@ bool CAN_bus_init(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan, uint32_t b
     HAL_StatusTypeDef start_status = HAL_CAN_Start(hcan);
     HAL_StatusTypeDef interrupt_status = HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
     return start_status == HAL_OK && interrupt_status == HAL_OK && filter_config_success;
+#else
+    return false;
+#endif
 }
 
 bool CAN_bus_receive(struct CAN_bus_handler *c)
 {
+#if CAN_BUS_ENABLED
 	bool received = HAL_CAN_GetRxMessage(c->hcan, CAN_RX_FIFO0, &(c->Rx_header), c->Rx_data) == HAL_OK;
     c->command_ready = received;
     return received;
+#else
+    return false;
+#endif
 }
 
 struct command CAN_bus_parse_command(struct CAN_bus_handler *c)
 {
     struct command com;
     com.type = NONE;
+
+#if CAN_BUS_ENABLED
     union command_data data;
     if (c->command_ready)
     {
@@ -92,6 +103,9 @@ struct command CAN_bus_parse_command(struct CAN_bus_handler *c)
     com.data = data;
     c->command_ready = false;
     return com;
+#else
+    return com;
+#endif
 }
 
 bool CAN_bus_send(
@@ -111,6 +125,7 @@ bool CAN_bus_send(
     uint32_t time_elapsed
 )
 {
+#if CAN_BUS_ENABLED
     struct CAN_msg_1_s msg1;
     msg1.battery_voltage = battery_voltage;
     msg1.current_temp = current_temp;
@@ -146,13 +161,31 @@ bool CAN_bus_send(
     uint32_t Tx_mailbox;
 
     status1 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[0]), msg1_u.bytes, &Tx_mailbox);
-//    while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox));
-    HAL_Delay(100);
-//    status2 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[1]), msg2_u.bytes, &Tx_mailbox);
-////    while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox));
-//    HAL_Delay(100);
-//    status3 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[2]), msg3_u.bytes, &Tx_mailbox);
-////    while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox));
+    uint32_t time_message_sent=HAL_GetTick();
+	uint32_t current;
+	do {
+		current = HAL_GetTick();
+	} while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox)
+			&& current - time_message_sent < CAN_SEND_TIMEOUT);
 
-    return status1 == HAL_OK; //&& status2 == HAL_OK && status3 == HAL_OK;
+	status2 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[1]), msg2_u.bytes,
+			&Tx_mailbox);
+	time_message_sent = HAL_GetTick();
+	do {
+		current = HAL_GetTick();
+	} while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox)
+			&& current - time_message_sent < CAN_SEND_TIMEOUT);
+
+	status3 = HAL_CAN_AddTxMessage(c->hcan, &((c->Tx_headers)[2]), msg3_u.bytes,
+			&Tx_mailbox);
+	time_message_sent = HAL_GetTick();
+	do {
+		current = HAL_GetTick();
+	} while (HAL_CAN_IsTxMessagePending(c->hcan, Tx_mailbox)
+			&& current - time_message_sent < CAN_SEND_TIMEOUT);
+
+    return status1 == HAL_OK && status2 == HAL_OK && status3 == HAL_OK;
+#else
+    return false;
+#endif
 }

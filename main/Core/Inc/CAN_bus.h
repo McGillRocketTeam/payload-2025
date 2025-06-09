@@ -119,4 +119,5 @@ bool CAN_bus_send(
     uint32_t time_elapsed
 );
 
+#define CAN_SEND_TIMEOUT 100
 #endif // __CAN_BUS_H

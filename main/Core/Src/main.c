@@ -76,21 +76,57 @@ static void MX_UART4_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-CAN_TxHeaderTypeDef TxHeader;
-CAN_RxHeaderTypeDef RxHeader;
+struct CAN_bus_handler can;
 
-uint32_t TxMailbox[4];
-uint8_t TxData[4];
-
-uint8_t RxData[8];
-
-uint8_t count = 0;
+uint32_t TxMailbox;
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
 {
-	CAN_bus_receive(&CAN_bus);
+	CAN_bus_receive(&can);
 }
 
+void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan1)
+{
+	CAN_RxHeaderTypeDef RxHeader;
+	uint8_t RxData[8];
+	printf("| AV -------------------------------\r\n");
+	while (HAL_CAN_GetRxFifoFillLevel(hcan1, CAN_RX_FIFO1) > 0)
+	{
+		HAL_CAN_GetRxMessage(hcan1, CAN_RX_FIFO1, &RxHeader, RxData);
+		switch (RxHeader.StdId)
+		{
+		case 0x200:
+			union CAN_msg_1_u msg1;
+			memcpy(&msg1, RxData, sizeof(RxData));
+			printf("| Received message 1. ok: %d, sampling state: %d, temperature control state: %d, target temp: %d, current temp: %d, battery voltage: %d\r\n",
+					msg1.msg.ok,
+					msg1.msg.sampling_state,
+					msg1.msg.temp_ctrl_state,
+					msg1.msg.target_temp,
+					msg1.msg.current_temp,
+					msg1.msg.battery_voltage);
+			break;
+		case 0x201:
+			union CAN_msg_2_u msg2;
+			memcpy(&msg2, RxData, sizeof(RxData));
+			printf("| Received message 2. x frequency: %d, y frequency: %d, z frequency: %d, x amplitude: %d\r\n",
+					msg2.msg.frqX,
+					msg2.msg.frqY,
+					msg2.msg.frqZ,
+					msg2.msg.ampX);
+			break;
+		case 0x202:
+			union CAN_msg_3_u msg3;
+			memcpy(&msg3, RxData, sizeof(RxData));
+			printf("| Received message 3. y amplitude: %d, z amplitude: %d, time: %ld\r\n",
+					msg3.msg.ampY,
+					msg3.msg.ampZ,
+					msg3.msg.time_elapsed);
+			break;
+		}
+	}
+	printf("| ----------------------------------\r\n\r\n");
+}
 /* USER CODE END 0 */
 
 /**
@@ -131,42 +167,183 @@ int main(void)
   MX_I2C3_Init();
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
-  printf("Beginning initialization...\r\n");
+  printf("\r\n\r\n\r\nInitializing...\r\n");
 
-  CAN_bus_init(&CAN_bus, &hcan1, 0x300);
-  HAL_Delay(100);
+  if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO1_MSG_PENDING) != HAL_OK)
+  {
+	  printf("activate notification error\r\n");
+	  Error_Handler();
+  }
+  if (!CAN_bus_init(&can, &hcan1, 0x200))
+  {
+	  printf("can bus init error\r\n");
+	  Error_Handler();
+  }
 
-   TxHeader.DLC = 1;
-   TxHeader.ExtId = 0;
-   TxHeader.IDE = CAN_ID_STD;
-   TxHeader.RTR = CAN_RTR_DATA;
-   TxHeader.StdId = 0x111;
-   TxHeader.TransmitGlobalTime = DISABLE;
-
-   HAL_Delay(100);
-
+  int count = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-//	  printf("Time: %ld\r\n", HAL_GetTick());
-//	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-//	  CAN_bus_send(&CAN_bus, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-//	  HAL_Delay(1000);
+		if (!CAN_bus_send(&can,
+				count % 2,
+				(count + 1) % 2,
+				count % 2,
+				1 + count,
+				2 + count,
+				3 + count,
+				4 + count,
+				5 + count,
+				6 + count,
+				7 + count,
+				8 + count,
+				9 + count,
+				HAL_GetTick()))
+		{
+			printf("can bus send error\r\n");
+			Error_Handler();
+		}
 
-	  bool check = CAN_bus_send(&CAN_bus,true,true,true,3,2,11,12,13,14,2,3,4,5);
-	  if (check){
-		  union CAN_msg_1_u *message=malloc(sizeof(union CAN_msg_1_u));
-		  memcpy(message, CAN_bus.Rx_data, sizeof(union CAN_msg_1_u));
+		CAN_TxHeaderTypeDef TxHeader;
 
-		  if (message->msg.battery_voltage==11){
-			  printf("message correct");
-			  HAL_Delay(100);
+		TxHeader.DLC = 1;
+		TxHeader.IDE = CAN_ID_STD;
+		TxHeader.RTR = CAN_RTR_DATA;
+		TxHeader.TransmitGlobalTime = DISABLE;
 
-	  	  }
-	  }
+		uint8_t TxData[8];
+
+		switch (count)
+		{
+		case 0:
+			TxHeader.StdId = RESET_PAYLOAD;
+			break;
+		case 1:
+			TxHeader.StdId = TOGGLE_SAMPLING;
+			TxData[0] = 1;
+			break;
+		case 2:
+			TxHeader.StdId = TOGGLE_SAMPLING;
+			TxData[0] = 0;
+			break;
+		case 3:
+			TxHeader.StdId = TOGGLE_COOLER;
+			TxData[0] = 1;
+			break;
+		case 4:
+			TxHeader.StdId = TOGGLE_COOLER;
+			TxData[0] = 0;
+			break;
+		case 5:
+			TxHeader.StdId = LANDED;
+			break;
+		case 6:
+			TxHeader.StdId = SET_TEMPERATURE;
+			TxData[0] = 0;
+			break;
+		case 7:
+			TxHeader.StdId = SET_TEMPERATURE;
+			TxData[0] = 1;
+			break;
+		case 8:
+			TxHeader.StdId = SET_TEMPERATURE;
+			TxData[0] = 2;
+			break;
+		case 9:
+			TxHeader.StdId = SET_TEMPERATURE;
+			TxData[0] = 3;
+			break;
+		case 10:
+			TxHeader.StdId = SET_TEMPERATURE;
+			TxData[0] = 4;
+			break;
+		case 11:
+			TxHeader.StdId = SET_TEMPERATURE;
+			TxData[0] = 5;
+			break;
+		case 12:
+			TxHeader.StdId = SET_TEMPERATURE;
+			TxData[0] = 6;
+			break;
+		case 13:
+			TxHeader.StdId = SET_TEMPERATURE;
+			TxData[0] = 7;
+			break;
+		case 14:
+			TxHeader.StdId = TOGGLE_LAUNCH_MODE;
+			TxData[0] = 0;
+			break;
+		case 15:
+			TxHeader.StdId = TOGGLE_LAUNCH_MODE;
+			TxData[0] = 1;
+			break;
+		}
+
+		HAL_Delay(1000);
+
+		if (HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailbox) != HAL_OK)
+		{
+			printf("can bus add tx message error\r\n");
+			Error_Handler();
+		}
+
+		count++;
+		count %= 16;
+
+		struct command com = CAN_bus_parse_command(&can);
+
+		if (com.type != NONE){
+			char *type;
+			int data = 0;
+			switch (com.type)
+			{
+			case RESET_PAYLOAD:
+				type = "RESET_PAYLOAD";
+				break;
+			case TOGGLE_SAMPLING:
+				type = "TOGGLE_SAMPLING";
+				data = com.data.on;
+				break;
+			case TOGGLE_COOLER:
+				type = "TOGGLE_COOLER";
+				data = com.data.on;
+				break;
+			case TOGGLE_LAUNCH_MODE:
+				type = "TOGGLE_LAUNCH_MODE";
+				data = com.data.on;
+				break;
+			case LANDED:
+				type = "LANDED";
+				break;
+			case SET_TEMPERATURE:
+				type = "SET_TEMPERATURE";
+				data = com.data.temp;
+				break;
+			case NONE:
+				type = "NONE";
+				break;
+			case INVALID:
+				type = "INVALID";
+				break;
+			}
+			printf("Command received: %s, Data: %d\r\n", type, data);
+		}
+
+		HAL_Delay(1000);
+
+//	  bool check = CAN_bus_send(&CAN_bus,true,true,true,3,2,11,12,13,14,2,3,4,5);
+//	  if (check){
+//		  union CAN_msg_1_u *message=malloc(sizeof(union CAN_msg_1_u));
+//		  memcpy(message, CAN_bus.Rx_data, sizeof(union CAN_msg_1_u));
+//
+//		  if (message->msg.battery_voltage==11){
+//			  printf("message correct");
+//			  HAL_Delay(100);
+//
+//	  	  }
+//	  }
 
     /* USER CODE END WHILE */
 
@@ -414,10 +591,36 @@ static void MX_CAN1_Init(void)
 
       canfilterconfig.FilterActivation = CAN_FILTER_ENABLE;
       canfilterconfig.FilterBank = 10;  // anything between 0 to SlaveStartFilterBank
-      canfilterconfig.FilterFIFOAssignment = CAN_RX_FIFO0;
-      canfilterconfig.FilterIdHigh = 0;
+      canfilterconfig.FilterFIFOAssignment = CAN_RX_FIFO1;
+      canfilterconfig.FilterIdHigh = 0x200 << 5;
       canfilterconfig.FilterIdLow = 0x0000;
-      canfilterconfig.FilterMaskIdHigh = 0;
+      canfilterconfig.FilterMaskIdHigh = 0xFFFF << 5;
+      canfilterconfig.FilterMaskIdLow = 0x0000;
+      canfilterconfig.FilterMode = CAN_FILTERMODE_IDMASK;
+      canfilterconfig.FilterScale = CAN_FILTERSCALE_32BIT;
+      canfilterconfig.SlaveStartFilterBank = 13;  // 13 to 27 are assigned to slave CAN (CAN 2) OR 0 to 12 are assgned to CAN1
+
+      HAL_CAN_ConfigFilter(&hcan1, &canfilterconfig);
+
+      canfilterconfig.FilterActivation = CAN_FILTER_ENABLE;
+      canfilterconfig.FilterBank = 11;  // anything between 0 to SlaveStartFilterBank
+      canfilterconfig.FilterFIFOAssignment = CAN_RX_FIFO1;
+      canfilterconfig.FilterIdHigh = 0x201 << 5;
+      canfilterconfig.FilterIdLow = 0x0000;
+      canfilterconfig.FilterMaskIdHigh = 0xFFFF << 5;
+      canfilterconfig.FilterMaskIdLow = 0x0000;
+      canfilterconfig.FilterMode = CAN_FILTERMODE_IDMASK;
+      canfilterconfig.FilterScale = CAN_FILTERSCALE_32BIT;
+      canfilterconfig.SlaveStartFilterBank = 13;  // 13 to 27 are assigned to slave CAN (CAN 2) OR 0 to 12 are assgned to CAN1
+
+      HAL_CAN_ConfigFilter(&hcan1, &canfilterconfig);
+
+      canfilterconfig.FilterActivation = CAN_FILTER_ENABLE;
+      canfilterconfig.FilterBank = 12;  // anything between 0 to SlaveStartFilterBank
+      canfilterconfig.FilterFIFOAssignment = CAN_RX_FIFO1;
+      canfilterconfig.FilterIdHigh = 0x202 << 5;
+      canfilterconfig.FilterIdLow = 0x0000;
+      canfilterconfig.FilterMaskIdHigh = 0xFFFF << 5;
       canfilterconfig.FilterMaskIdLow = 0x0000;
       canfilterconfig.FilterMode = CAN_FILTERMODE_IDMASK;
       canfilterconfig.FilterScale = CAN_FILTERSCALE_32BIT;
