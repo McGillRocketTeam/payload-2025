@@ -17,9 +17,6 @@ bool PL_ADC_Init(PL_ADC_Handler *adc, ADC_HandleTypeDef *hadc1, ADC_HandleTypeDe
     adc->vbat_sample = 0;
     adc->current_sample = 0;
     
-    // Allow ADC2 injected conversion to be manually and not automatically triggered
-    // TODO: Not sure if this is needed
-    ADC2->CR1 &= ~ADC_CR1_JAUTO;
     // Start ADCs
     // Starting ADC1 in triple synchronous multimode with DMA takes the values from the other two ADCs 
     HAL_StatusTypeDef status2 = HAL_ADC_Start(adc->hadc2);
@@ -42,7 +39,9 @@ bool PL_ADC_InjectedConversion(PL_ADC_Handler *adc)
     HAL_StatusTypeDef start_status = HAL_ADCEx_InjectedStart(adc->hadc1);
     if (start_status != HAL_OK)
     {
-        return false; // Failed to start injected conversion
+        // Failed to start injected conversion
+        // Return early to avoid making `HAL_ADCEx_InjectedPollForConversion` freezing
+        return false; 
     }
     // ADC1 injected conversion for battery voltage
     HAL_StatusTypeDef poll_status1 = HAL_ADCEx_InjectedPollForConversion(adc->hadc1, HAL_MAX_DELAY);
