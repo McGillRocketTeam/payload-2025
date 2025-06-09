@@ -45,7 +45,7 @@ bool CAN_bus_init(struct CAN_bus_handler *c, CAN_HandleTypeDef *hcan, uint32_t b
     HAL_StatusTypeDef interrupt_status = HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
     return start_status == HAL_OK && interrupt_status == HAL_OK && filter_config_success;
 #else
-    return false;
+    return true;
 #endif
 }
 
@@ -56,7 +56,7 @@ bool CAN_bus_receive(struct CAN_bus_handler *c)
     c->command_ready = received;
     return received;
 #else
-    return false;
+    return true;
 #endif
 }
 
@@ -102,10 +102,8 @@ struct command CAN_bus_parse_command(struct CAN_bus_handler *c)
     }
     com.data = data;
     c->command_ready = false;
-    return com;
-#else
-    return com;
 #endif
+    return com;
 }
 
 bool CAN_bus_send(
@@ -186,6 +184,6 @@ bool CAN_bus_send(
 
     return status1 == HAL_OK && status2 == HAL_OK && status3 == HAL_OK;
 #else
-    return false;
+    return true;
 #endif
 }
