@@ -1,5 +1,4 @@
 #include "CAN_bus.h"
-#include "serial_monitor.h"
 #include "enabled.h"
 
 // Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
