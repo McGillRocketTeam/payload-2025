@@ -739,7 +739,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == TIM2)
   {
     BME280_Measure();
-    printf("Measurement successful.\r\n");
   }
   else if (htim->Instance == TIM9)
   {
