@@ -2,7 +2,7 @@
 #include "enabled.h"
 
 // Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
-temperature temperatures[N_TEMPERATURES] = {1, 5, 10, 15, 20, 25, 30, 37};
+float temperatures[N_TEMPERATURES] = {1, 5, 10, 15, 20, 25, 30, 37};
 
 bool PL_CANBus_Init(PL_CANBus_Handler *c, CAN_HandleTypeDef *hcan, uint32_t base_id)
 {

@@ -74,12 +74,11 @@ enum command_type
 };
 
 #define N_TEMPERATURES 8
-typedef float temperature;
 
 union command_data
 {
     bool on;
-    temperature temp;
+    float temp;
 };
 
 struct command
