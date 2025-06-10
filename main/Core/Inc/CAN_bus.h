@@ -88,14 +88,14 @@ struct command
     union command_data data;
 };
 
-struct PL_CANBus_Handler
+typedef struct
 {
 	CAN_HandleTypeDef *hcan;
     CAN_TxHeaderTypeDef Tx_headers[N_MESSAGES];
     CAN_RxHeaderTypeDef Rx_header;
     uint8_t Rx_data[8];
     bool command_ready;
-};
+} PL_CANBus_Handler;
 
 /**
  * @brief Initializes the CAN bus with the given CAN peripheral and base ID.
@@ -104,7 +104,7 @@ struct PL_CANBus_Handler
  * @param base_id Base ID for the CAN messages. Message ID is the base ID for the first message, and subsequent messages are assigned sequential IDs.
  * @return true if initialization is successful, false otherwise.
  */
-bool PL_CANBus_Init(struct PL_CANBus_Handler *c, CAN_HandleTypeDef *hcan, uint32_t base_id);
+bool PL_CANBus_Init(PL_CANBus_Handler *c, CAN_HandleTypeDef *hcan, uint32_t base_id);
 
 /**
  * @brief Receives a CAN message and updates the command_ready flag.
@@ -112,7 +112,7 @@ bool PL_CANBus_Init(struct PL_CANBus_Handler *c, CAN_HandleTypeDef *hcan, uint32
  * @note This function should be called in the CAN receive interrupt callback.
  * @return true if a message was received, false otherwise.
  */
-bool PL_CANBus_Receive(struct PL_CANBus_Handler *c);
+bool PL_CANBus_Receive(PL_CANBus_Handler *c);
 
 /**
  * @brief Parses the received CAN message and returns the command.
@@ -120,7 +120,7 @@ bool PL_CANBus_Receive(struct PL_CANBus_Handler *c);
  * @return A command structure containing the command type and data.
  * @note The command_ready flag must be set to true before calling this function.
  */
-struct command PL_CANBus_ParseCommand(struct PL_CANBus_Handler *c);
+struct command PL_CANBus_ParseCommand(PL_CANBus_Handler *c);
 
 /**
  * @brief Sends a CAN message with the specified parameters.
@@ -144,7 +144,7 @@ struct command PL_CANBus_ParseCommand(struct PL_CANBus_Handler *c);
  * @note This function should be called periodically or in a timer interrupt.
  */
 bool PL_CANBus_Send(
-    struct PL_CANBus_Handler *c,
+    PL_CANBus_Handler *c,
     bool ok,
     bool sampling_state,
     bool temperature_control_state,

@@ -55,7 +55,7 @@ TIM_HandleTypeDef htim4;
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
-struct PL_CANBus_Handler CAN_bus;
+PL_CANBus_Handler can;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -75,8 +75,6 @@ static void MX_UART4_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-struct PL_CANBus_Handler can;
-
 uint32_t TxMailbox;
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
@@ -331,19 +329,6 @@ int main(void)
 		}
 
 		HAL_Delay(1000);
-
-//	  bool check = CAN_bus_send(&CAN_bus,true,true,true,3,2,11,12,13,14,2,3,4,5);
-//	  if (check){
-//		  union CAN_msg_1_u *message=malloc(sizeof(union CAN_msg_1_u));
-//		  memcpy(message, CAN_bus.Rx_data, sizeof(union CAN_msg_1_u));
-//
-//		  if (message->msg.battery_voltage==11){
-//			  printf("message correct");
-//			  HAL_Delay(100);
-//
-//	  	  }
-//	  }
-
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
