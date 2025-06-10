@@ -121,11 +121,9 @@ int main(void)
   printf("Starting CAN bus...\r\n");
   if (!PL_CANBus_Init(&can, &hcan1, 0x200))
   {
-	  printf("CAN bus initialization error\r\n");
+	  printf("CAN bus initialization error.\r\n");
 	  Error_Handler();
   }
-
-  int count = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -134,29 +132,8 @@ int main(void)
   {
 		printf("Time: %ld\r\n", HAL_GetTick());
 
-		if (!PL_CANBus_Send(&can,
-				count % 2,
-				(count + 1) % 2,
-				count % 2,
-				1 + count,
-				2 + count,
-				3 + count,
-				4 + count,
-				5 + count,
-				6 + count,
-				7 + count,
-				8 + count,
-				9 + count,
-				HAL_GetTick()))
-		{
-			printf("CAN bus send error\r\n");
-			Error_Handler();
-		}
-		printf("CAN message sent\r\n");
-
-		struct command com = PL_CANBus_ParseCommand(&can);
-
-		if (com.type != NONE){
+		if (can.command_ready) {
+			struct command com = PL_CANBus_ParseCommand(&can);
 			char *type;
 			int data = 0;
 			switch (com.type)
@@ -192,12 +169,6 @@ int main(void)
 			}
 			printf("Command received: %s, Data: %d\r\n", type, data);
 		}
-		else
-		{
-			printf("No message received\r\n");
-		}
-
-		count++;
 
 		HAL_Delay(1000);
     /* USER CODE END WHILE */
