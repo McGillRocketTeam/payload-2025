@@ -75,55 +75,7 @@ static void MX_UART4_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint32_t TxMailbox;
 
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
-{
-	PL_CANBus_Receive(&can);
-}
-
-void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan1)
-{
-	CAN_RxHeaderTypeDef RxHeader;
-	uint8_t RxData[8];
-	printf("| AV -------------------------------\r\n");
-	while (HAL_CAN_GetRxFifoFillLevel(hcan1, CAN_RX_FIFO1) > 0)
-	{
-		HAL_CAN_GetRxMessage(hcan1, CAN_RX_FIFO1, &RxHeader, RxData);
-		switch (RxHeader.StdId)
-		{
-		case 0x200:
-			union CAN_msg_1_u msg1;
-			memcpy(&msg1, RxData, sizeof(RxData));
-			printf("| Received message 1. ok: %d, sampling state: %d, temperature control state: %d, target temp: %d, current temp: %d, battery voltage: %d\r\n",
-					msg1.msg.ok,
-					msg1.msg.sampling_state,
-					msg1.msg.temp_ctrl_state,
-					msg1.msg.target_temp,
-					msg1.msg.current_temp,
-					msg1.msg.battery_voltage);
-			break;
-		case 0x201:
-			union CAN_msg_2_u msg2;
-			memcpy(&msg2, RxData, sizeof(RxData));
-			printf("| Received message 2. x frequency: %d, y frequency: %d, z frequency: %d, x amplitude: %d\r\n",
-					msg2.msg.frqX,
-					msg2.msg.frqY,
-					msg2.msg.frqZ,
-					msg2.msg.ampX);
-			break;
-		case 0x202:
-			union CAN_msg_3_u msg3;
-			memcpy(&msg3, RxData, sizeof(RxData));
-			printf("| Received message 3. y amplitude: %d, z amplitude: %d, time: %ld\r\n",
-					msg3.msg.ampY,
-					msg3.msg.ampZ,
-					msg3.msg.time_elapsed);
-			break;
-		}
-	}
-	printf("| ----------------------------------\r\n\r\n");
-}
 /* USER CODE END 0 */
 
 /**
@@ -164,16 +116,12 @@ int main(void)
   MX_I2C3_Init();
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
-  printf("\r\n\r\n\r\nInitializing...\r\n");
+  printf("Initializing...\r\n");
 
-  if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO1_MSG_PENDING) != HAL_OK)
-  {
-	  printf("activate notification error\r\n");
-	  Error_Handler();
-  }
+  printf("Starting CAN bus...\r\n");
   if (!PL_CANBus_Init(&can, &hcan1, 0x200))
   {
-	  printf("can bus init error\r\n");
+	  printf("CAN bus initialization error\r\n");
 	  Error_Handler();
   }
 
@@ -184,6 +132,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+		printf("Time: %ld\r\n", HAL_GetTick());
+
 		if (!PL_CANBus_Send(&can,
 				count % 2,
 				(count + 1) % 2,
@@ -199,95 +149,10 @@ int main(void)
 				9 + count,
 				HAL_GetTick()))
 		{
-			printf("can bus send error\r\n");
+			printf("CAN bus send error\r\n");
 			Error_Handler();
 		}
-
-		CAN_TxHeaderTypeDef TxHeader;
-
-		TxHeader.DLC = 1;
-		TxHeader.IDE = CAN_ID_STD;
-		TxHeader.RTR = CAN_RTR_DATA;
-		TxHeader.TransmitGlobalTime = DISABLE;
-
-		uint8_t TxData[8];
-
-		switch (count)
-		{
-		case 0:
-			TxHeader.StdId = RESET_PAYLOAD;
-			break;
-		case 1:
-			TxHeader.StdId = TOGGLE_SAMPLING;
-			TxData[0] = 1;
-			break;
-		case 2:
-			TxHeader.StdId = TOGGLE_SAMPLING;
-			TxData[0] = 0;
-			break;
-		case 3:
-			TxHeader.StdId = TOGGLE_COOLER;
-			TxData[0] = 1;
-			break;
-		case 4:
-			TxHeader.StdId = TOGGLE_COOLER;
-			TxData[0] = 0;
-			break;
-		case 5:
-			TxHeader.StdId = LANDED;
-			break;
-		case 6:
-			TxHeader.StdId = SET_TEMPERATURE;
-			TxData[0] = 0;
-			break;
-		case 7:
-			TxHeader.StdId = SET_TEMPERATURE;
-			TxData[0] = 1;
-			break;
-		case 8:
-			TxHeader.StdId = SET_TEMPERATURE;
-			TxData[0] = 2;
-			break;
-		case 9:
-			TxHeader.StdId = SET_TEMPERATURE;
-			TxData[0] = 3;
-			break;
-		case 10:
-			TxHeader.StdId = SET_TEMPERATURE;
-			TxData[0] = 4;
-			break;
-		case 11:
-			TxHeader.StdId = SET_TEMPERATURE;
-			TxData[0] = 5;
-			break;
-		case 12:
-			TxHeader.StdId = SET_TEMPERATURE;
-			TxData[0] = 6;
-			break;
-		case 13:
-			TxHeader.StdId = SET_TEMPERATURE;
-			TxData[0] = 7;
-			break;
-		case 14:
-			TxHeader.StdId = TOGGLE_LAUNCH_MODE;
-			TxData[0] = 0;
-			break;
-		case 15:
-			TxHeader.StdId = TOGGLE_LAUNCH_MODE;
-			TxData[0] = 1;
-			break;
-		}
-
-		HAL_Delay(1000);
-
-		if (HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailbox) != HAL_OK)
-		{
-			printf("can bus add tx message error\r\n");
-			Error_Handler();
-		}
-
-		count++;
-		count %= 16;
+		printf("CAN message sent\r\n");
 
 		struct command com = PL_CANBus_ParseCommand(&can);
 
@@ -327,6 +192,12 @@ int main(void)
 			}
 			printf("Command received: %s, Data: %d\r\n", type, data);
 		}
+		else
+		{
+			printf("No message received\r\n");
+		}
+
+		count++;
 
 		HAL_Delay(1000);
     /* USER CODE END WHILE */
@@ -556,7 +427,7 @@ static void MX_CAN1_Init(void)
   /* USER CODE END CAN1_Init 1 */
   hcan1.Instance = CAN1;
   hcan1.Init.Prescaler = 20;
-  hcan1.Init.Mode = CAN_MODE_LOOPBACK;
+  hcan1.Init.Mode = CAN_MODE_NORMAL;
   hcan1.Init.SyncJumpWidth = CAN_SJW_1TQ;
   hcan1.Init.TimeSeg1 = CAN_BS1_9TQ;
   hcan1.Init.TimeSeg2 = CAN_BS2_8TQ;
@@ -571,46 +442,6 @@ static void MX_CAN1_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN CAN1_Init 2 */
-  CAN_FilterTypeDef canfilterconfig;
-
-      canfilterconfig.FilterActivation = CAN_FILTER_ENABLE;
-      canfilterconfig.FilterBank = 10;  // anything between 0 to SlaveStartFilterBank
-      canfilterconfig.FilterFIFOAssignment = CAN_RX_FIFO1;
-      canfilterconfig.FilterIdHigh = 0x200 << 5;
-      canfilterconfig.FilterIdLow = 0x0000;
-      canfilterconfig.FilterMaskIdHigh = 0xFFFF << 5;
-      canfilterconfig.FilterMaskIdLow = 0x0000;
-      canfilterconfig.FilterMode = CAN_FILTERMODE_IDMASK;
-      canfilterconfig.FilterScale = CAN_FILTERSCALE_32BIT;
-      canfilterconfig.SlaveStartFilterBank = 13;  // 13 to 27 are assigned to slave CAN (CAN 2) OR 0 to 12 are assgned to CAN1
-
-      HAL_CAN_ConfigFilter(&hcan1, &canfilterconfig);
-
-      canfilterconfig.FilterActivation = CAN_FILTER_ENABLE;
-      canfilterconfig.FilterBank = 11;  // anything between 0 to SlaveStartFilterBank
-      canfilterconfig.FilterFIFOAssignment = CAN_RX_FIFO1;
-      canfilterconfig.FilterIdHigh = 0x201 << 5;
-      canfilterconfig.FilterIdLow = 0x0000;
-      canfilterconfig.FilterMaskIdHigh = 0xFFFF << 5;
-      canfilterconfig.FilterMaskIdLow = 0x0000;
-      canfilterconfig.FilterMode = CAN_FILTERMODE_IDMASK;
-      canfilterconfig.FilterScale = CAN_FILTERSCALE_32BIT;
-      canfilterconfig.SlaveStartFilterBank = 13;  // 13 to 27 are assigned to slave CAN (CAN 2) OR 0 to 12 are assgned to CAN1
-
-      HAL_CAN_ConfigFilter(&hcan1, &canfilterconfig);
-
-      canfilterconfig.FilterActivation = CAN_FILTER_ENABLE;
-      canfilterconfig.FilterBank = 12;  // anything between 0 to SlaveStartFilterBank
-      canfilterconfig.FilterFIFOAssignment = CAN_RX_FIFO1;
-      canfilterconfig.FilterIdHigh = 0x202 << 5;
-      canfilterconfig.FilterIdLow = 0x0000;
-      canfilterconfig.FilterMaskIdHigh = 0xFFFF << 5;
-      canfilterconfig.FilterMaskIdLow = 0x0000;
-      canfilterconfig.FilterMode = CAN_FILTERMODE_IDMASK;
-      canfilterconfig.FilterScale = CAN_FILTERSCALE_32BIT;
-      canfilterconfig.SlaveStartFilterBank = 13;  // 13 to 27 are assigned to slave CAN (CAN 2) OR 0 to 12 are assgned to CAN1
-
-      HAL_CAN_ConfigFilter(&hcan1, &canfilterconfig);
 
   /* USER CODE END CAN1_Init 2 */
 
@@ -852,7 +683,10 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
+{
+	PL_CANBus_Receive(&can);
+}
 /* USER CODE END 4 */
 
 /**
