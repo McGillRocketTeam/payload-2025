@@ -144,7 +144,7 @@ int main(void)
   }
 
   // Initialize accelerometer handler
-  PL_Accelerometer_Init(&accelerometer, &htim3, ACCEL_POWER_GPIO_Port, ACCEL_POWER_Pin, accelerometer_fft_buffer_x, accelerometer_fft_buffer_y, accelerometer_fft_buffer_z);
+  PL_Accelerometer_Init(&accelerometer, &htim8, ACCEL_POWER_GPIO_Port, ACCEL_POWER_Pin, accelerometer_fft_buffer_x, accelerometer_fft_buffer_y, accelerometer_fft_buffer_z);
   // Start the accelerometer
   if (!PL_Accelerometer_Start(&accelerometer))
   {
@@ -767,7 +767,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 	if (hadc == &hadc1)
 	{
 		printf("ADC buffer complete, %ld\r\n", HAL_GetTick());
-    PL_Accelerometer_Record(&accelerometer, &accelerometer_buffer[FFT_SIZE_TRIPLE]);
+		PL_Accelerometer_Record(&accelerometer, &accelerometer_buffer[FFT_SIZE_TRIPLE]);
 	}
 }
 /* USER CODE END 4 */
