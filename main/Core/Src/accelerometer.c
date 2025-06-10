@@ -25,9 +25,8 @@ bool PL_Accelerometer_Start(PL_Accelerometer_Handler *accel)
 {
     // Power on the accelerometer
     HAL_GPIO_WritePin(accel->power_GPIO_Port, accel->power_Pin, GPIO_PIN_SET);
-    // TODO: Don't need an interrupt on this timer, see if `HAL_TIM_Base_Start` works
     // Start the timer which triggers the accelerometer ADC conversions
-    return HAL_TIM_Base_Start_IT(accel->timer) == HAL_OK;
+    return HAL_TIM_Base_Start(accel->timer) == HAL_OK;
 }
 
 bool PL_Accelerometer_Stop(PL_Accelerometer_Handler *accel)
@@ -35,7 +34,7 @@ bool PL_Accelerometer_Stop(PL_Accelerometer_Handler *accel)
     // Power off the accelerometer
     HAL_GPIO_WritePin(accel->power_GPIO_Port, accel->power_Pin, GPIO_PIN_RESET);
     // Stop the timer which triggers the accelerometer ADC conversions
-    return HAL_TIM_Base_Stop_IT(accel->timer) == HAL_OK;
+    return HAL_TIM_Base_Stop(accel->timer) == HAL_OK;
 }
 
 void PL_Accelerometer_Record(PL_Accelerometer_Handler *accel, uint16_t *buffer)
