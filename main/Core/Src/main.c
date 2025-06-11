@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "serial_monitor.h"
+#include "CAN_bus.h"
 #include "peltier.h"
 #include "BME280.h"
 #include "blink.h"
@@ -59,6 +60,7 @@ TIM_HandleTypeDef htim9;
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
+PL_CANBus_Handler can;
 PL_Peltier_Handler peltier;
 PL_Blink_Handler blink;
 
@@ -127,7 +129,14 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM9_Init();
   /* USER CODE BEGIN 2 */
-  printf("Beginning initialization...\r\n");
+  printf("Initializing...\r\n");
+
+  printf("Starting CAN bus...\r\n");
+  if (!PL_CANBus_Init(&can, &hcan1, 0x200))
+  {
+	  printf("CAN bus initialization error.\r\n");
+	  Error_Handler();
+  }
 
   printf("Starting blinking routine...\r\n");
   PL_Blink_Init(&blink, &htim9, LD1_GPIO_Port, LD1_Pin);
@@ -158,7 +167,6 @@ int main(void)
   }
   // Start duty cycle at zero
   PL_Peltier_SetCycle(&peltier, 0.0);
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -166,8 +174,47 @@ int main(void)
   printf("Beginning main loop.\r\n");
   while (1)
   {
-	  printf("Time: %ld\r\n", HAL_GetTick());
-	  HAL_Delay(1000);
+		printf("Time: %ld\r\n", HAL_GetTick());
+
+		if (can.command_ready) {
+			struct command com = PL_CANBus_ParseCommand(&can);
+			char *type;
+			int data = 0;
+			switch (com.type)
+			{
+			case RESET_PAYLOAD:
+				type = "RESET_PAYLOAD";
+				break;
+			case TOGGLE_SAMPLING:
+				type = "TOGGLE_SAMPLING";
+				data = com.data.on;
+				break;
+			case TOGGLE_COOLER:
+				type = "TOGGLE_COOLER";
+				data = com.data.on;
+				break;
+			case TOGGLE_LAUNCH_MODE:
+				type = "TOGGLE_LAUNCH_MODE";
+				data = com.data.on;
+				break;
+			case LANDED:
+				type = "LANDED";
+				break;
+			case SET_TEMPERATURE:
+				type = "SET_TEMPERATURE";
+				data = com.data.temp;
+				break;
+			case NONE:
+				type = "NONE";
+				break;
+			case INVALID:
+				type = "INVALID";
+				break;
+			}
+			printf("Command received: %s, Data: %d\r\n", type, data);
+		}
+
+		HAL_Delay(1000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -394,11 +441,11 @@ static void MX_CAN1_Init(void)
 
   /* USER CODE END CAN1_Init 1 */
   hcan1.Instance = CAN1;
-  hcan1.Init.Prescaler = 16;
+  hcan1.Init.Prescaler = 20;
   hcan1.Init.Mode = CAN_MODE_NORMAL;
   hcan1.Init.SyncJumpWidth = CAN_SJW_1TQ;
-  hcan1.Init.TimeSeg1 = CAN_BS1_1TQ;
-  hcan1.Init.TimeSeg2 = CAN_BS2_1TQ;
+  hcan1.Init.TimeSeg1 = CAN_BS1_9TQ;
+  hcan1.Init.TimeSeg2 = CAN_BS2_8TQ;
   hcan1.Init.TimeTriggeredMode = DISABLE;
   hcan1.Init.AutoBusOff = DISABLE;
   hcan1.Init.AutoWakeUp = DISABLE;
@@ -734,6 +781,11 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
+{
+	PL_CANBus_Receive(&can);
+}
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM2)
