@@ -1,5 +1,5 @@
 /*
- * ADC.h
+ * accelerometer.h
  *
  *  Created on: Jun 7, 2025
  *      Author: akash
