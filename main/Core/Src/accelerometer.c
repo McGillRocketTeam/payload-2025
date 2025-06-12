@@ -6,6 +6,7 @@
  */
 
 #include "accelerometer.h"
+#include "arm_math.h"
 
 #define NORMALIZED_AMPLITUDE(a, b) ((a * a + b * b) / FFT_SIZE_SINGLE)
 #define INDEX_TO_FREQUENCY(i) ((float) i * SAMPLE_RATE_HZ / FFT_SIZE_SINGLE / 2.0f)

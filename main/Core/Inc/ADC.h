@@ -8,7 +8,7 @@
 #ifndef INC_ADC_H_
 #define INC_ADC_H_
 
-#include "stm32f4xx_hal.h"
+#include "stm32f4xx.h"
 #include <stdbool.h>
 
 typedef struct

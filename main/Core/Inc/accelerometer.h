@@ -8,7 +8,7 @@
 #ifndef INC_ACCELEROMETER_H_
 #define INC_ACCELEROMETER_H_
 
-#include "stm32f4xx_hal.h"
+#include "stm32f4xx.h"
 #include <stdbool.h>
 
 #define ACCELEROMETER_SAMPLE_SIZE_SINGLE 4096
@@ -18,7 +18,7 @@
 // TODO: Verify if the +1 is correct
 #define FFT_AMPLITUDE_SIZE (FFT_SIZE_SINGLE / 2 + 1)
 
-#define SAMPLE_RATE_HZ 10000
+#define SAMPLE_RATE_HZ 10000.0f
 
 typedef struct {
 	TIM_HandleTypeDef *timer;
