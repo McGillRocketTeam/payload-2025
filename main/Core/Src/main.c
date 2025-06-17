@@ -60,6 +60,7 @@ UART_HandleTypeDef huart4;
 /* USER CODE BEGIN PV */
 PL_ADC_Handler adc;
 PL_Accelerometer_Handler accelerometer;
+arm_rfft_fast_instance_f32 fft_handler;
 
 // Accelerometer buffer which DMA will write to
 uint16_t accelerometer_buffer[ACCELEROMETER_SAMPLE_SIZE_TRIPLE];
@@ -144,7 +145,7 @@ int main(void)
   }
 
   // Initialize accelerometer handler
-  PL_Accelerometer_Init(&accelerometer, &htim8, ACCEL_POWER_GPIO_Port, ACCEL_POWER_Pin, accelerometer_fft_buffer_x, accelerometer_fft_buffer_y, accelerometer_fft_buffer_z);
+  PL_Accelerometer_Init(&accelerometer, &htim8, ACCEL_POWER_GPIO_Port, ACCEL_POWER_Pin, accelerometer_fft_buffer_x, accelerometer_fft_buffer_y, accelerometer_fft_buffer_z,&fft_handler);
   // Start the accelerometer
   if (!PL_Accelerometer_Start(&accelerometer))
   {

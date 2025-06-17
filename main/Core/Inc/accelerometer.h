@@ -9,9 +9,11 @@
 #define INC_ACCELEROMETER_H_
 
 #include "stm32f4xx.h"
+#include "arm_math.h"
 #include <stdbool.h>
 
 #define ACCELEROMETER_SAMPLE_SIZE_SINGLE 4096
+#define ACCELEROMETER_HIGH_VOLTAGE 3.3
 #define ACCELEROMETER_SAMPLE_SIZE_TRIPLE (ACCELEROMETER_SAMPLE_SIZE_SINGLE * 3)
 #define FFT_SIZE_SINGLE (ACCELEROMETER_SAMPLE_SIZE_SINGLE / 2)
 #define FFT_SIZE_TRIPLE (FFT_SIZE_SINGLE * 3)
@@ -28,6 +30,7 @@ typedef struct {
 	uint16_t *fft_buffer_y;
 	uint16_t *fft_buffer_z;
 	bool analysis_ready;
+	arm_rfft_fast_instance_f32 *fft_handler;
 	// TODO: Add FFT instance
 } PL_Accelerometer_Handler;
 
@@ -42,7 +45,7 @@ typedef struct {
  * @param fft_buffer_z Pointer to the buffer which will be used for Z-axis FFT data. Should be of size `FFT_SIZE_SINGLE`.
  * @note This function does not start the accelerometers or the timer, it only initializes the handler structure.
  */
-void PL_Accelerometer_Init(PL_Accelerometer_Handler *accel, TIM_HandleTypeDef *timer, GPIO_TypeDef *power_GPIO_Port, uint16_t power_Pin, uint16_t *fft_buffer_x, uint16_t *fft_buffer_y, uint16_t *fft_buffer_z);
+void PL_Accelerometer_Init(PL_Accelerometer_Handler *accel, TIM_HandleTypeDef *timer, GPIO_TypeDef *power_GPIO_Port, uint16_t power_Pin, uint16_t *fft_buffer_x, uint16_t *fft_buffer_y, uint16_t *fft_buffer_z,arm_rfft_fast_instance_f32 *fft_handler);
 /**
  * @brief Powers on the accelerometers and starts the triple conversion trigger timer.
  * @param accel Pointer to the accelerometer handler structure.
@@ -72,7 +75,7 @@ void PL_Accelerometer_Record(PL_Accelerometer_Handler *accel, uint16_t *buffer);
  * @param amplitudes_z Pointer to the output array for Z-axis FFT amplitudes. Should be of size `FFT_AMPLITUDE_SIZE`.
  * @return true if the analysis is successful, false otherwise.
  */
-bool PL_Accelerometer_Analyze(PL_Accelerometer_Handler *accel, float *amplitudes_x, float *amplitudes_y, float *amplitudes_z);
+void PL_Accelerometer_Analyze(PL_Accelerometer_Handler *accel, float *amplitudes_x, float *amplitudes_y, float *amplitudes_z);
 /**
  * @brief Calculates the peak frequency from the FFT amplitudes.
  * @param amplitudes Pointer to the array of FFT amplitudes. Should be of size `FFT_AMPLITUDE_SIZE`.
