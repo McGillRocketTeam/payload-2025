@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "serial_monitor.h"
+#include "SD_card.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,7 +58,10 @@ TIM_HandleTypeDef htim4;
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
+PL_SDCard_Handler sd_card;
 
+FATFS fs;
+FIL file;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -123,10 +127,17 @@ int main(void)
   /* USER CODE BEGIN 2 */
   printf("Beginning initialization...\r\n");
 
-  FATFS fs;
-  FRESULT res = f_mount(&fs, "", 1);
-  printf("SD inserted: %d\r\n", !HAL_GPIO_ReadPin(SD_DETECT_GPIO_Port, SD_DETECT_Pin));
-  printf("Mount result: %d\r\n", res);
+  printf("Initializing SD card...\r\n");
+  if (!PL_SDCard_Init(&sd_card, &fs, &file))
+  {
+    printf("SD card initialization/mount error.\r\n");
+    Error_Handler();
+  }
+  if (!PL_SDCard_Open(&sd_card))
+  {
+    printf("SD card file open error.\r\n");
+    Error_Handler();
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
