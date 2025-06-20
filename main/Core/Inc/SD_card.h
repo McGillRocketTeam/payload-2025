@@ -28,6 +28,28 @@ typedef struct
     FIL *file;
 } PL_SDCard_Handler;
 
+typedef struct __attribute__((packed))
+{
+    bool ok;
+    bool sampling_state;
+    uint32_t time_elapsed;
+    bool temp_control_state;
+    uint8_t target_temp;
+    uint16_t current_temp;
+    uint16_t current_pressure;
+    uint16_t current_humidity;
+    uint8_t battery_voltage;
+} normal_msg;
+
+typedef struct
+{
+    uint16_t *x_buffer;
+    uint16_t *y_buffer;
+    uint16_t *z_buffer;
+} RawADC_msg;
+
+static uint16_t sd_current_bytes_written = 0;
+
 /**
  * @brief Initializes the SD card handler and mounts the filesystem.
  * @param sd_card Pointer to the SD card handler structure.
@@ -51,6 +73,14 @@ bool PL_SDCard_Close(PL_SDCard_Handler *sd_card);
 /**
  * @brief Writes data to the file on the SD card. Flushes the writes if the lines written exceeds
  * @param sd_card Pointer to the SD card handler structure.
+ * @param ok
+ * @param sampling_state is the sampling on or off?
+ * @param temp_control_state is the temperature control on or off?
+ * @param target_temp the target temperature
+ * @param current_temp the current temperature
+ * @param current_pressure the current pressure
+ * @param current_humidity the current humidity
+ * @param battery_voltage the battery voltage
  * @return true if data was written successfully, false otherwise.
  * @note This function assumes that the file is already opened.
  */
@@ -58,6 +88,19 @@ bool PL_SDCard_Close(PL_SDCard_Handler *sd_card);
  * Not everything can be logged at the same time since the ADC data can only be acquired in chunks
  * via the conversion half-complete callbacks.
  */
-bool PL_SDCard_WriteData(PL_SDCard_Handler *sd_card);
+bool PL_SDCard_WriteDataNormal(
+    PL_SDCard_Handler *sd_card,
+    bool ok,
+    bool sampling_state,
+    uint32_t time_elapsed,
+    bool temp_control_state,
+    uint8_t target_temp,
+    uint16_t current_temp,
+    uint16_t current_pressure,
+    uint16_t current_humidity,
+    uint8_t battery_voltage);
+
+bool PL_SDCard_WriteData_RawADC(
+    /* TODO FILL OUt*/);
 
 #endif /* INC_SD_CARD_H_ */
