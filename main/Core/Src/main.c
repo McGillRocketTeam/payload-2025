@@ -156,10 +156,27 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+
   while (1)
   {
 	  printf("Time: %ld\r\n", HAL_GetTick());
 	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+
+	  if (accelerometer.analysis_ready){
+		  PL_Accelerometer_Analyze(&accelerometer, accelerometer_amplitudes_x, accelerometer_amplitudes_y, accelerometer_amplitudes_z);
+		  float x;
+		  float y;
+		  float z;
+		  float freq_x = PL_Accelerometer_PeakFrequency(accelerometer_amplitudes_x, &x);
+		  float freq_y = PL_Accelerometer_PeakFrequency(accelerometer_amplitudes_y, &y);
+		  float freq_z = PL_Accelerometer_PeakFrequency(accelerometer_amplitudes_z, &z);
+
+		  printf("freq_x: %d amp_x: %d\r\n", (int) freq_x, (int) (1000*x));
+		  printf("freq_y: %d amp_y: %d\r\n", (int) freq_y, (int) (1000*y));
+		  printf("freq_z: %d amp_z: %d\r\n", (int) freq_z, (int) (1000*z));
+
+	  }
 
     // TODO: Convert injected conversions to be software triggered by a timer interrupt or by a timer trigger output
 	  PL_ADC_InjectedConversion(&adc);
@@ -169,7 +186,7 @@ int main(void)
       (int) (100 * PL_ADC_GetBatteryVoltage(&adc)),
       (int) (100 * PL_ADC_GetCoolerCurrent(&adc))
     );
-	  HAL_Delay(1000);
+	  HAL_Delay(50);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
