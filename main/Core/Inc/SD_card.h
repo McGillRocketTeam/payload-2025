@@ -41,11 +41,12 @@ typedef struct __attribute__((packed))
     uint8_t battery_voltage;
 } normal_msg;
 
+#define ACCELEROMETER_SAMPLE_SIZE_SINGLE 256
 typedef struct
 {
-    uint16_t *x_buffer;
-    uint16_t *y_buffer;
-    uint16_t *z_buffer;
+    uint16_t x_buffer[ACCELEROMETER_SAMPLE_SIZE_SINGLE];
+    uint16_t y_buffer[ACCELEROMETER_SAMPLE_SIZE_SINGLE];
+    uint16_t z_buffer[ACCELEROMETER_SAMPLE_SIZE_SINGLE];
 } RawADC_msg;
 
 static uint16_t sd_current_bytes_written = 0;

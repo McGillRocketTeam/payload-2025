@@ -150,40 +150,49 @@ bool PL_SDCard_WriteData_Normal(
 
     return true; // Successfully wrote data
 }
+// Dummy define for compilation, remove before commit
+#define ACCELEROMETER_SAMPLE_SIZE_SINGLE 64
 
 bool PL_SDCard_WriteData_RawADC(
     PL_SDCard_Handler *sd_card,
-    uint16_t *x_buffer,
-    uint16_t *y_buffer,
-    uint16_t *z_buffer)
+    const uint16_t *x_buffer,
+    const uint16_t *y_buffer,
+    const uint16_t *z_buffer)
 {
-    // pack into struct
-    RawADC_msg msg = {
-        .x_buffer = x_buffer,
-        .y_buffer = y_buffer,
-        .z_buffer = z_buffer,
-    };
-
-    // write to file
+    // prefix to identify the packet type (raw ADC data)
+    const char prefix[] = "RawADC";
     UINT bytes_written;
-    sd_current_bytes_written += sizeof(msg);
-    FRESULT res = f_write(sd_card->file, &msg, sizeof(msg), &bytes_written);
+    FRESULT res = f_write(sd_card->file, prefix, sizeof(prefix) - 1, &bytes_written);
+    if (res != FR_OK || bytes_written != sizeof(prefix) - 1)
+    {
+        return false;
+    }
+    sd_current_bytes_written += bytes_written;
+
+    // copy/pack into struct
+    RawADC_msg msg;
+    memcpy(msg.x_buffer, x_buffer, sizeof(msg.x_buffer));
+    memcpy(msg.y_buffer, y_buffer, sizeof(msg.y_buffer));
+    memcpy(msg.z_buffer, z_buffer, sizeof(msg.z_buffer)); // is this correct?
+
+    // Write struct to file
+    res = f_write(sd_card->file, &msg, sizeof(msg), &bytes_written);
     if (res != FR_OK || bytes_written != sizeof(msg))
     {
-        return false; // Error writing to file, or didn't write the expected number of bytes
+        return false;
     }
+    sd_current_bytes_written += bytes_written;
 
-    // check number of bytes written
+    // Flush if needed
     if (sd_current_bytes_written >= SD_FLUSH_BYTES)
     {
-        // flush the file
         res = f_sync(sd_card->file);
         if (res != FR_OK)
         {
-            return false; // Error flushing file
+            return false;
         }
         sd_current_bytes_written = 0; // Reset the byte counter after flushing
     }
 
-    return true; // Successfully wrote data
+    return true;
 }
