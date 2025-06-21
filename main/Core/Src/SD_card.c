@@ -114,6 +114,16 @@ bool PL_SDCard_WriteData_Normal(
     uint16_t current_humidity,
     uint8_t battery_voltage)
 {
+    // prefix to identify the packet type (normal telemetry data)
+    const char prefix[] = "Normal__";
+    UINT bytes_written;
+    FRESULT res = f_write(sd_card->file, prefix, sizeof(prefix) - 1, &bytes_written);
+    if (res != FR_OK || bytes_written != sizeof(prefix) - 1)
+    {
+        return false;
+    }
+    sd_current_bytes_written += bytes_written;
+
     // pack into struct
     normal_msg msg = {
         .ok = ok,
@@ -160,7 +170,7 @@ bool PL_SDCard_WriteData_RawADC(
     const uint16_t *z_buffer)
 {
     // prefix to identify the packet type (raw ADC data)
-    const char prefix[] = "RawADC";
+    const char prefix[] = "RawADC__";
     UINT bytes_written;
     FRESULT res = f_write(sd_card->file, prefix, sizeof(prefix) - 1, &bytes_written);
     if (res != FR_OK || bytes_written != sizeof(prefix) - 1)
