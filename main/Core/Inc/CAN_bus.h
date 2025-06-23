@@ -93,9 +93,9 @@ typedef struct
 {
 	CAN_HandleTypeDef *hcan;
     CAN_TxHeaderTypeDef Tx_headers[N_MESSAGES];
-    CAN_RxHeaderTypeDef Rx_header;
-    uint8_t Rx_data[8];
-    bool command_ready;
+    volatile CAN_RxHeaderTypeDef Rx_header;
+    volatile uint8_t Rx_data[8];
+    volatile bool command_ready;
 } PL_CANBus_Handler;
 
 /**

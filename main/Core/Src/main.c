@@ -63,11 +63,14 @@ TIM_HandleTypeDef htim9;
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
+// PL peripheral driver handlers
+PL_Blink_Handler blink;
 PL_CANBus_Handler can;
 PL_Peltier_Handler peltier;
-PL_Blink_Handler blink;
-
+// BME280 variables
 float temperature, pressure, humidity;
+// Interrupt queue actions
+volatile uint8_t BME280_sample_ready, blink_toggle_ready;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -137,8 +140,8 @@ int main(void)
   printf("Starting CAN bus...\r\n");
   if (!PL_CANBus_Init(&can, &hcan1))
   {
-	  printf("CAN bus initialization error.\r\n");
-	  Error_Handler();
+    printf("CAN bus initialization error.\r\n");
+    Error_Handler();
   }
 
   printf("Starting blinking routine...\r\n");
@@ -148,6 +151,8 @@ int main(void)
     printf("Blink start error.\r\n");
     Error_Handler();
   }
+  // Initialize blink as ready to turn LED on first time through main loop
+  blink_toggle_ready = 1;
 
   printf("Configuring BME280...\r\n");
   if (BME280_Config(OSRS_2, OSRS_16, OSRS_1, MODE_NORMAL, T_SB_0p5, IIR_16) != 0)
@@ -161,6 +166,8 @@ int main(void)
     printf("Temperature sample timer start error.\r\n");
     Error_Handler();
   }
+  // Initialize BME280 sample as ready to sample first time through main loop
+  BME280_sample_ready = 1;
 
   printf("Initializing Peltier cooler PWM output...\r\n");
   if (!PL_Peltier_Init(&peltier, &TIM_PELTIER_PWM, &TIM_PELTIER_REFERENCE, TIM_CHANNEL_1, TIM_CHANNEL_1))
@@ -177,47 +184,58 @@ int main(void)
   printf("Beginning main loop.\r\n");
   while (1)
   {
-		printf("Time: %ld\r\n", HAL_GetTick());
+    if (can.command_ready)
+    {
+      struct command com = PL_CANBus_ParseCommand(&can);
+      char *type;
+      int data = 0;
+      switch (com.type)
+      {
+      case RESET_PAYLOAD:
+        type = "RESET_PAYLOAD";
+        break;
+      case TOGGLE_SAMPLING:
+        type = "TOGGLE_SAMPLING";
+        data = com.data.on;
+        break;
+      case TOGGLE_COOLER:
+        type = "TOGGLE_COOLER";
+        data = com.data.on;
+        break;
+      case TOGGLE_LAUNCH_MODE:
+        type = "TOGGLE_LAUNCH_MODE";
+        data = com.data.on;
+        break;
+      case LANDED:
+        type = "LANDED";
+        break;
+      case SET_TEMPERATURE:
+        type = "SET_TEMPERATURE";
+        data = com.data.temp;
+        break;
+      case NONE:
+        type = "NONE";
+        break;
+      case INVALID:
+        type = "INVALID";
+        break;
+      }
+      printf("Command received: %s, Data: %d\r\n", type, data);
+    }
 
-		if (can.command_ready) {
-			struct command com = PL_CANBus_ParseCommand(&can);
-			char *type;
-			int data = 0;
-			switch (com.type)
-			{
-			case RESET_PAYLOAD:
-				type = "RESET_PAYLOAD";
-				break;
-			case TOGGLE_SAMPLING:
-				type = "TOGGLE_SAMPLING";
-				data = com.data.on;
-				break;
-			case TOGGLE_COOLER:
-				type = "TOGGLE_COOLER";
-				data = com.data.on;
-				break;
-			case TOGGLE_LAUNCH_MODE:
-				type = "TOGGLE_LAUNCH_MODE";
-				data = com.data.on;
-				break;
-			case LANDED:
-				type = "LANDED";
-				break;
-			case SET_TEMPERATURE:
-				type = "SET_TEMPERATURE";
-				data = com.data.temp;
-				break;
-			case NONE:
-				type = "NONE";
-				break;
-			case INVALID:
-				type = "INVALID";
-				break;
-			}
-			printf("Command received: %s, Data: %d\r\n", type, data);
-		}
+    if (BME280_sample_ready)
+    {
+      BME280_Measure();
+      printf("BME280 sampled. Temperature: %d C, Pressure: %d Pa, Humidity: %d%\r\n", (int) temperature, (int) pressure, (int) (humidity * 100));
+      BME280_sample_ready = 0;
+    }
 
-		HAL_Delay(1000);
+    if (blink_toggle_ready)
+    {
+      PL_Blink_Toggle(&blink);
+      printf("Light blinked. Time: %ld", HAL_GetTick());
+      blink_toggle_ready = 0;
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -786,18 +804,18 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
 {
-	PL_CANBus_Receive(&can);
+  PL_CANBus_Receive(&can);
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM_TEMPERATURE_SAMPLE.Instance)
   {
-    BME280_Measure();
+    BME280_sample_ready = 1;
   }
   else if (htim->Instance == TIM_BLINK.Instance)
   {
-    PL_Blink_Toggle(&blink);
+    blink_toggle_ready = 1;
   }
 }
 /* USER CODE END 4 */
