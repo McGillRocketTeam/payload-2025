@@ -69,7 +69,7 @@ PL_CANBus_Handler can;
 PL_Peltier_Handler peltier;
 // BME280 variables
 float temperature, pressure, humidity;
-// Interrupt queue actions
+// Flags for actions triggered by interrupts
 volatile uint8_t BME280_sample_ready, blink_toggle_ready;
 /* USER CODE END PV */
 
