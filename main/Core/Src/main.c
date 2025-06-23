@@ -137,11 +137,15 @@ int main(void)
   }
 
   // Initialize accelerometer handler
-  PL_Accelerometer_Init(&accelerometer, &htim8, ACCEL_POWER_GPIO_Port, ACCEL_POWER_Pin);
+  if (!PL_Accelerometer_Init(&accelerometer, &htim8, ACCEL_POWER_GPIO_Port, ACCEL_POWER_Pin))
+  {
+    printf("Accelerometer initialization error.\r\n");
+    Error_Handler();
+  }
   // Start the accelerometer
   if (!PL_Accelerometer_Start(&accelerometer))
   {
-    printf("Accelerometer start error\r\n");
+    printf("Accelerometer start error.\r\n");
     Error_Handler();
   }
   /* USER CODE END 2 */
@@ -162,7 +166,7 @@ int main(void)
 		  float freq_x = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_x, &amp_x);
 		  float freq_y = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_y, &amp_y);
 		  float freq_z = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_z, &amp_z);
-      
+
 		  printf("freq_x: %d amp_x: %d\r\n", (int) freq_x, (int) (1000 * amp_x));
 		  printf("freq_y: %d amp_y: %d\r\n", (int) freq_y, (int) (1000 * amp_y));
 		  printf("freq_z: %d amp_z: %d\r\n", (int) freq_z, (int) (1000 * amp_z));
