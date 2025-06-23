@@ -54,7 +54,7 @@ bool PL_CANBus_Init(PL_CANBus_Handler *c, CAN_HandleTypeDef *hcan)
 bool PL_CANBus_Receive(PL_CANBus_Handler *c)
 {
 #if CAN_BUS_ENABLED
-    bool received = HAL_CAN_GetRxMessage(c->hcan, CAN_RX_FIFO0, &(c->Rx_header), c->Rx_data) == HAL_OK;
+    bool received = HAL_CAN_GetRxMessage(c->hcan, CAN_RX_FIFO0, (CAN_RxHeaderTypeDef *) &(c->Rx_header), (uint8_t *) c->Rx_data) == HAL_OK;
     c->command_ready = received;
     return received;
 #else
