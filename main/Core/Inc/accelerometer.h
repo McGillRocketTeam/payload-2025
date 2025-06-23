@@ -26,12 +26,14 @@ typedef struct {
 	TIM_HandleTypeDef *timer;
 	GPIO_TypeDef *power_GPIO_Port;
 	uint16_t power_Pin;
-	uint16_t *fft_buffer_x;
-	uint16_t *fft_buffer_y;
-	uint16_t *fft_buffer_z;
-	bool analysis_ready;
-	arm_rfft_fast_instance_f32 *fft_handler;
-	// TODO: Add FFT instance
+	volatile uint16_t fft_buffer_x[FFT_SIZE_SINGLE];
+	volatile uint16_t fft_buffer_y[FFT_SIZE_SINGLE];
+	volatile uint16_t fft_buffer_z[FFT_SIZE_SINGLE];
+	volatile bool analysis_ready;
+	float amplitudes_x[FFT_AMPLITUDE_SIZE];
+	float amplitudes_y[FFT_AMPLITUDE_SIZE];
+	float amplitudes_z[FFT_AMPLITUDE_SIZE];
+	arm_rfft_fast_instance_f32 fft_handler;
 } PL_Accelerometer_Handler;
 
 /**
@@ -40,12 +42,9 @@ typedef struct {
  * @param timer Pointer to the timer handle used for triggering ADC conversions.
  * @param power_GPIO_Port GPIO port for the accelerometer power control pin.
  * @param power_Pin GPIO pin for the accelerometer power control.
- * @param fft_buffer_x Pointer to the buffer which will be used for X-axis FFT data. Should be of size `FFT_SIZE_SINGLE`.
- * @param fft_buffer_y Pointer to the buffer which will be used for Y-axis FFT data. Should be of size `FFT_SIZE_SINGLE`.
- * @param fft_buffer_z Pointer to the buffer which will be used for Z-axis FFT data. Should be of size `FFT_SIZE_SINGLE`.
  * @note This function does not start the accelerometers or the timer, it only initializes the handler structure.
  */
-void PL_Accelerometer_Init(PL_Accelerometer_Handler *accel, TIM_HandleTypeDef *timer, GPIO_TypeDef *power_GPIO_Port, uint16_t power_Pin, uint16_t *fft_buffer_x, uint16_t *fft_buffer_y, uint16_t *fft_buffer_z,arm_rfft_fast_instance_f32 *fft_handler);
+bool PL_Accelerometer_Init(PL_Accelerometer_Handler *accel, TIM_HandleTypeDef *timer, GPIO_TypeDef *power_GPIO_Port, uint16_t power_Pin);
 /**
  * @brief Powers on the accelerometers and starts the triple conversion trigger timer.
  * @param accel Pointer to the accelerometer handler structure.
@@ -59,23 +58,21 @@ bool PL_Accelerometer_Start(PL_Accelerometer_Handler *accel);
  */
 bool PL_Accelerometer_Stop(PL_Accelerometer_Handler *accel);
 /**
- * @brief Records (copies) accelerometer data into the three FFT buffers and flags analysis as ready.
+ * @brief Records (copies) accelerometer data as triplets into the three FFT buffers and flags analysis as ready.
  * @note This function should be called in the ADC conversion half complete/complete callback.
  * @param accel Pointer to the accelerometer handler structure.
  * @param buffer Pointer to the source buffer of raw triplet data which the ADCs write to.
  */
 void PL_Accelerometer_Record(PL_Accelerometer_Handler *accel, uint16_t *buffer);
 /**
- * @brief Performs FFT analysis on all three axes of the recorded accelerometer data.
+ * @brief Performs FFT analysis on all three axes of the recorded accelerometer data. 
+ * Populates all three accelerometer amplitude buffers.
  * This function should be called after `PL_Accelerometer_Record` has been called and analysis is ready.
  * Flags analysis as not ready after completion.
  * @param accel Pointer to the accelerometer handler structure.
- * @param amplitudes_x Pointer to the output array for X-axis FFT amplitudes. Should be of size `FFT_AMPLITUDE_SIZE`.
- * @param amplitudes_y Pointer to the output array for Y-axis FFT amplitudes. Should be of size `FFT_AMPLITUDE_SIZE`.
- * @param amplitudes_z Pointer to the output array for Z-axis FFT amplitudes. Should be of size `FFT_AMPLITUDE_SIZE`.
  * @return true if the analysis is successful, false otherwise.
  */
-void PL_Accelerometer_Analyze(PL_Accelerometer_Handler *accel, float *amplitudes_x, float *amplitudes_y, float *amplitudes_z);
+void PL_Accelerometer_Analyze(PL_Accelerometer_Handler *accel);
 /**
  * @brief Calculates the peak frequency from the FFT amplitudes.
  * @param amplitudes Pointer to the array of FFT amplitudes. Should be of size `FFT_AMPLITUDE_SIZE`.

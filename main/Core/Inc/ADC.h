@@ -16,8 +16,8 @@ typedef struct
 	ADC_HandleTypeDef *hadc1;
 	ADC_HandleTypeDef *hadc2;
 	ADC_HandleTypeDef *hadc3;
-	uint16_t vbat_sample;
-	uint16_t current_sample;
+	volatile uint16_t vbat_sample;
+	volatile uint16_t current_sample;
 } PL_ADC_Handler;
 
 /**

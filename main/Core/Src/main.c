@@ -60,17 +60,9 @@ UART_HandleTypeDef huart4;
 /* USER CODE BEGIN PV */
 PL_ADC_Handler adc;
 PL_Accelerometer_Handler accelerometer;
-arm_rfft_fast_instance_f32 fft_handler;
 
-// Accelerometer buffer which DMA will write to
-uint16_t accelerometer_buffer[ACCELEROMETER_SAMPLE_SIZE_TRIPLE];
-// FFT buffers for accelerometer data
-uint16_t accelerometer_fft_buffer_x[FFT_SIZE_SINGLE], 
-  accelerometer_fft_buffer_y[FFT_SIZE_SINGLE],
-  accelerometer_fft_buffer_z[FFT_SIZE_SINGLE];
-float accelerometer_amplitudes_x[FFT_AMPLITUDE_SIZE],
-  accelerometer_amplitudes_y[FFT_AMPLITUDE_SIZE],
-  accelerometer_amplitudes_z[FFT_AMPLITUDE_SIZE];
+// Accelerometer buffer which DMA will write to. Needs to be shared a bit, so declared in main.
+volatile uint16_t accelerometer_buffer[ACCELEROMETER_SAMPLE_SIZE_TRIPLE];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -145,7 +137,7 @@ int main(void)
   }
 
   // Initialize accelerometer handler
-  PL_Accelerometer_Init(&accelerometer, &htim8, ACCEL_POWER_GPIO_Port, ACCEL_POWER_Pin, accelerometer_fft_buffer_x, accelerometer_fft_buffer_y, accelerometer_fft_buffer_z,&fft_handler);
+  PL_Accelerometer_Init(&accelerometer, &htim8, ACCEL_POWER_GPIO_Port, ACCEL_POWER_Pin);
   // Start the accelerometer
   if (!PL_Accelerometer_Start(&accelerometer))
   {
@@ -156,26 +148,24 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
-
   while (1)
   {
 	  printf("Time: %ld\r\n", HAL_GetTick());
 	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
-	  if (accelerometer.analysis_ready){
-		  PL_Accelerometer_Analyze(&accelerometer, accelerometer_amplitudes_x, accelerometer_amplitudes_y, accelerometer_amplitudes_z);
-		  float x;
-		  float y;
-		  float z;
-		  float freq_x = PL_Accelerometer_PeakFrequency(accelerometer_amplitudes_x, &x);
-		  float freq_y = PL_Accelerometer_PeakFrequency(accelerometer_amplitudes_y, &y);
-		  float freq_z = PL_Accelerometer_PeakFrequency(accelerometer_amplitudes_z, &z);
-
-		  printf("freq_x: %d amp_x: %d\r\n", (int) freq_x, (int) (1000*x));
-		  printf("freq_y: %d amp_y: %d\r\n", (int) freq_y, (int) (1000*y));
-		  printf("freq_z: %d amp_z: %d\r\n", (int) freq_z, (int) (1000*z));
-
+	  if (accelerometer.analysis_ready)
+    {
+      // Perform FFT analysis (stored in amplitude buffers)
+		  PL_Accelerometer_Analyze(&accelerometer);
+      // Find peak amplitudes and frequencies on each axis
+		  float amp_x, amp_y, amp_z;
+		  float freq_x = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_x, &amp_x);
+		  float freq_y = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_y, &amp_y);
+		  float freq_z = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_z, &amp_z);
+      
+		  printf("freq_x: %d amp_x: %d\r\n", (int) freq_x, (int) (1000 * amp_x));
+		  printf("freq_y: %d amp_y: %d\r\n", (int) freq_y, (int) (1000 * amp_y));
+		  printf("freq_z: %d amp_z: %d\r\n", (int) freq_z, (int) (1000 * amp_z));
 	  }
 
     // TODO: Convert injected conversions to be software triggered by a timer interrupt or by a timer trigger output

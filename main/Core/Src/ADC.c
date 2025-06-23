@@ -40,8 +40,8 @@ bool PL_ADC_InjectedConversion(PL_ADC_Handler *adc)
     if (start_status != HAL_OK)
     {
         // Failed to start injected conversion
-        // Return early to avoid making `HAL_ADCEx_InjectedPollForConversion` freezing
-        return false; 
+        // Return early to avoid making `HAL_ADCEx_InjectedPollForConversion` freeze
+        return false;
     }
     // ADC1 injected conversion for battery voltage
     HAL_StatusTypeDef poll_status1 = HAL_ADCEx_InjectedPollForConversion(adc->hadc1, HAL_MAX_DELAY);

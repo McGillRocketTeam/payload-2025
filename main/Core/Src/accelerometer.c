@@ -10,22 +10,15 @@
 #include "serial_monitor.h"
 
 #define NORMALIZED_AMPLITUDE(a, b) ((a * a + b * b) / FFT_SIZE_SINGLE)
-#define INDEX_TO_FREQUENCY(i) ((float) i * SAMPLE_RATE_HZ / FFT_SIZE_SINGLE / 2.0f)
+#define INDEX_TO_FREQUENCY(i) ((float)i * SAMPLE_RATE_HZ / FFT_SIZE_SINGLE / 2.0f)
 
-void PL_Accelerometer_Init(PL_Accelerometer_Handler *accel,
-		TIM_HandleTypeDef *timer, GPIO_TypeDef *power_GPIO_Port,
-		uint16_t power_Pin, uint16_t *fft_buffer_x, uint16_t *fft_buffer_y,
-		uint16_t *fft_buffer_z, arm_rfft_fast_instance_f32 *fft_handler)
+bool PL_Accelerometer_Init(PL_Accelerometer_Handler *accel, TIM_HandleTypeDef *timer, GPIO_TypeDef *power_GPIO_Port, uint16_t power_Pin)
 {
     accel->timer = timer;
     accel->power_GPIO_Port = power_GPIO_Port;
     accel->power_Pin = power_Pin;
-    accel->fft_buffer_x = fft_buffer_x;
-    accel->fft_buffer_y = fft_buffer_y;
-    accel->fft_buffer_z = fft_buffer_z;
     accel->analysis_ready = false;
-    accel->fft_handler = fft_handler;
-    arm_rfft_fast_init_f32(accel->fft_handler, FFT_SIZE_SINGLE);
+    return arm_rfft_fast_init_f32(&accel->fft_handler, FFT_SIZE_SINGLE) == ARM_MATH_SUCCESS;
 }
 
 bool PL_Accelerometer_Start(PL_Accelerometer_Handler *accel)
@@ -57,14 +50,12 @@ void PL_Accelerometer_Record(PL_Accelerometer_Handler *accel, uint16_t *buffer)
     accel->analysis_ready = true;
 }
 
-void PL_Accelerometer_Analyze(PL_Accelerometer_Handler *accel, float *amplitudes_x, float *amplitudes_y, float *amplitudes_z)
+void PL_Accelerometer_Analyze(PL_Accelerometer_Handler *accel)
 {
-    if (!accel->analysis_ready){
+    if (!accel->analysis_ready)
+    {
         return; // Analysis not ready
     }
-    // TODO: Implement FFT analysis, use ARM status for return status
-    // TODO: learn conversion of raw ADC to voltage
-    // divide by 4096*3.3V for voltage values in float
 
     float voltage_x[FFT_SIZE_SINGLE] = {0};
     float voltage_y[FFT_SIZE_SINGLE] = {0};
@@ -74,41 +65,41 @@ void PL_Accelerometer_Analyze(PL_Accelerometer_Handler *accel, float *amplitudes
     float fft_output_y[FFT_SIZE_SINGLE] = {0};
     float fft_output_z[FFT_SIZE_SINGLE] = {0};
 
-    for (int i=0; i<FFT_SIZE_SINGLE; i++){
-    	voltage_x[i]=ACCELEROMETER_HIGH_VOLTAGE*(accel->fft_buffer_x[i]/4096.0f);
-    	voltage_y[i]=ACCELEROMETER_HIGH_VOLTAGE*(accel->fft_buffer_y[i]/4096.0f);
-    	voltage_z[i]=ACCELEROMETER_HIGH_VOLTAGE*(accel->fft_buffer_z[i]/4096.0f);
+    for (int i = 0; i < FFT_SIZE_SINGLE; i++)
+    {
+        voltage_x[i] = ACCELEROMETER_HIGH_VOLTAGE * (accel->fft_buffer_x[i] / 4096.0f);
+        voltage_y[i] = ACCELEROMETER_HIGH_VOLTAGE * (accel->fft_buffer_y[i] / 4096.0f);
+        voltage_z[i] = ACCELEROMETER_HIGH_VOLTAGE * (accel->fft_buffer_z[i] / 4096.0f);
     }
 
-    //gonna assume amp buffers intialized elsewhere
+    // gonna assume amp buffers intialized elsewhere
 
     uint32_t time = HAL_GetTick();
-    printf("BEFORE X: %ld\r\n", HAL_GetTick()-time);
-	arm_rfft_fast_f32(accel->fft_handler, voltage_x, (float *) fft_output_x, 0);
-    printf("time after x: %ld\r\n", HAL_GetTick()-time);
-    time=HAL_GetTick();
-	arm_rfft_fast_f32(accel->fft_handler, voltage_y, (float *) fft_output_y, 0);
-    printf("time after y: %ld\r\n", HAL_GetTick()-time);
-    time=HAL_GetTick();
-	arm_rfft_fast_f32(accel->fft_handler, voltage_z, (float *) fft_output_z, 0);
-    printf("time after z: %ld\r\n", HAL_GetTick()-time);
-    printf("AFTER Z: %ld\r\n", HAL_GetTick()-time);
+    printf("BEFORE X: %ld\r\n", HAL_GetTick() - time);
+    arm_rfft_fast_f32(&accel->fft_handler, voltage_x, (float *)fft_output_x, 0);
+    printf("time after x: %ld\r\n", HAL_GetTick() - time);
+    time = HAL_GetTick();
+    arm_rfft_fast_f32(&accel->fft_handler, voltage_y, (float *)fft_output_y, 0);
+    printf("time after y: %ld\r\n", HAL_GetTick() - time);
+    time = HAL_GetTick();
+    arm_rfft_fast_f32(&accel->fft_handler, voltage_z, (float *)fft_output_z, 0);
+    printf("time after z: %ld\r\n", HAL_GetTick() - time);
+    printf("AFTER Z: %ld\r\n", HAL_GetTick() - time);
 
+    accel->amplitudes_x[0] = NORMALIZED_AMPLITUDE(fft_output_x[0], fft_output_x[1]);
+    accel->amplitudes_y[0] = NORMALIZED_AMPLITUDE(fft_output_y[0], fft_output_y[1]);
+    accel->amplitudes_z[0] = NORMALIZED_AMPLITUDE(fft_output_z[0], fft_output_z[1]);
 
-    amplitudes_x[0] = NORMALIZED_AMPLITUDE(fft_output_x[0], fft_output_x[1]);
-    amplitudes_y[0] = NORMALIZED_AMPLITUDE(fft_output_y[0], fft_output_y[1]);
-    amplitudes_z[0] = NORMALIZED_AMPLITUDE(fft_output_z[0], fft_output_z[1]);
-
-    for (int i = 2; i < FFT_SIZE_SINGLE-2; i += 2)
+    for (int i = 2; i < FFT_SIZE_SINGLE - 2; i += 2)
     {
-        amplitudes_x[i / 2] = 2 * NORMALIZED_AMPLITUDE(fft_output_x[i], fft_output_x[i + 1]);
-        amplitudes_y[i / 2] = 2 * NORMALIZED_AMPLITUDE(fft_output_y[i], fft_output_y[i + 1]);
-        amplitudes_z[i / 2] = 2 * NORMALIZED_AMPLITUDE(fft_output_z[i], fft_output_z[i + 1]);
+        accel->amplitudes_x[i / 2] = 2 * NORMALIZED_AMPLITUDE(fft_output_x[i], fft_output_x[i + 1]);
+        accel->amplitudes_y[i / 2] = 2 * NORMALIZED_AMPLITUDE(fft_output_y[i], fft_output_y[i + 1]);
+        accel->amplitudes_z[i / 2] = 2 * NORMALIZED_AMPLITUDE(fft_output_z[i], fft_output_z[i + 1]);
     }
 
-    amplitudes_x[FFT_SIZE_SINGLE/2 -1] = NORMALIZED_AMPLITUDE(fft_output_x[FFT_SIZE_SINGLE-2], fft_output_x[FFT_SIZE_SINGLE-1]);
-    amplitudes_y[FFT_SIZE_SINGLE/2 -1] = NORMALIZED_AMPLITUDE(fft_output_y[FFT_SIZE_SINGLE-2], fft_output_y[FFT_SIZE_SINGLE-1]);
-    amplitudes_z[FFT_SIZE_SINGLE/2 -1] = NORMALIZED_AMPLITUDE(fft_output_z[FFT_SIZE_SINGLE-2], fft_output_z[FFT_SIZE_SINGLE-1]);
+    accel->amplitudes_x[FFT_SIZE_SINGLE / 2 - 1] = NORMALIZED_AMPLITUDE(fft_output_x[FFT_SIZE_SINGLE - 2], fft_output_x[FFT_SIZE_SINGLE - 1]);
+    accel->amplitudes_y[FFT_SIZE_SINGLE / 2 - 1] = NORMALIZED_AMPLITUDE(fft_output_y[FFT_SIZE_SINGLE - 2], fft_output_y[FFT_SIZE_SINGLE - 1]);
+    accel->amplitudes_z[FFT_SIZE_SINGLE / 2 - 1] = NORMALIZED_AMPLITUDE(fft_output_z[FFT_SIZE_SINGLE - 2], fft_output_z[FFT_SIZE_SINGLE - 1]);
 
     accel->analysis_ready = false;
 }
