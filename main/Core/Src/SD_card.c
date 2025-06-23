@@ -6,9 +6,12 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include "stm32f446xx.h"
 #include "SD_card.h"
 #include "enabled.h"
+
+bool write_packet(PL_SDCard_Handler *sd_card, const char *prefix, size_t size_prefix, const void *data, size_t size_data);
 
 bool PL_SDCard_Init(PL_SDCard_Handler *sd_card, FATFS *fs, FIL *file)
 {
@@ -71,38 +74,7 @@ bool PL_SDCard_Close(PL_SDCard_Handler *sd_card)
 #endif
 }
 
-/*
-packets sent to avionics: we also write this to the SD card
-
-everything that starts with pl_ we record to the sd card
-EXCEPT VIBRATION!
-
-two types of packets written to SD card
-character prefix to determine the type of packet
-fixed amount of data (we know this from the prefix)
-normal packet:
-
-make two structures:
-normal packet telemetry
-raw ADC data
-
-each of them should have the time they were recorded
-
-two types of write functions, one for each type of packet
-takes in all relevant data as parameters / struct
-write to file
-check number of bytes written
-#if # bytes written > SD_FLUSH_BYTES
-    flush the file
-
-takes a ton of params
-packs into struct
-sends struct
-
-take a look at last year's SD card drivers for inspiration/help
-*/
-
-bool PL_SDCard_WriteData_Normal(
+bool PL_SDCard_WriteTelemetry(
     PL_SDCard_Handler *sd_card,
     bool ok,
     bool sampling_state,
@@ -114,18 +86,9 @@ bool PL_SDCard_WriteData_Normal(
     uint16_t current_humidity,
     uint8_t battery_voltage)
 {
-    // prefix to identify the packet type (normal telemetry data)
-    const char prefix[] = "Normal__";
-    UINT bytes_written;
-    FRESULT res = f_write(sd_card->file, prefix, sizeof(prefix) - 1, &bytes_written);
-    if (res != FR_OK || bytes_written != sizeof(prefix) - 1)
-    {
-        return false;
-    }
-    sd_current_bytes_written += bytes_written;
-
-    // pack into struct
-    normal_msg msg = {
+#if SD_CARD_ENABLED
+    // Pack data into struct
+    SD_packet_telemetry msg = {
         .ok = ok,
         .sampling_state = sampling_state,
         .time_elapsed = time_elapsed,
@@ -137,71 +100,63 @@ bool PL_SDCard_WriteData_Normal(
         .battery_voltage = battery_voltage,
     };
 
-    // write to file
-    UINT bytes_written;
-    sd_current_bytes_written += sizeof(msg);
-    FRESULT res = f_write(sd_card->file, &msg, sizeof(msg), &bytes_written);
-    if (res != FR_OK || bytes_written != sizeof(msg))
-    {
-        return false; // Error writing to file, or didn't write the expected number of bytes
-    }
+    // Packet header has 1 subtracted from size to not include null terminator
+    return write_packet(sd_card, SD_PACKET_HEADER_TELEMETRY, sizeof(SD_PACKET_HEADER_TELEMETRY) - 1, (void *) &msg, sizeof(msg));
+#else
+    return true;
+#endif
+}
 
-    // check number of bytes written
-    if (sd_current_bytes_written >= SD_FLUSH_BYTES)
+bool PL_SDCard_WriteAccelerometer(
+    PL_SDCard_Handler *sd_card,
+    uint16_t *x_buffer,
+    uint16_t *y_buffer,
+    uint16_t *z_buffer)
+{
+#if SD_CARD_ENABLED
+    // Copy/pack into struct
+    SD_packet_accelerometer msg;
+    memcpy(&msg.x_buffer, x_buffer, sizeof(msg.x_buffer));
+    memcpy(&msg.y_buffer, y_buffer, sizeof(msg.y_buffer));
+    memcpy(&msg.z_buffer, z_buffer, sizeof(msg.z_buffer));
+
+    // Packet header has 1 subtracted from size to not include null terminator
+    return write_packet(sd_card, SD_PACKET_HEADER_ACCELEROMETER, sizeof(SD_PACKET_HEADER_ACCELEROMETER) - 1, (void *) &msg, sizeof(msg));
+#else
+    return true;
+#endif
+}
+
+bool write_packet(PL_SDCard_Handler *sd_card, const char *prefix, size_t size_prefix, const void *data, size_t size_data)
+{
+    UINT bytes_written;
+    FRESULT res;
+
+    res = f_write(sd_card->file, (void *) prefix, size_prefix, &bytes_written);
+    // Error writing prefix, or didn't write the expected number of bytes
+    if (res != FR_OK || bytes_written != size_prefix)
     {
-        // flush the file
+        return false;
+    }
+    sd_card->bytes_written += bytes_written;
+
+    res = f_write(sd_card->file, data, size_data, &bytes_written);
+    // Error writing to file, or didn't write the expected number of bytes
+    if (res != FR_OK || bytes_written != size_data)
+    {
+        return false;
+    }
+    sd_card->bytes_written += bytes_written;
+
+    // Check if we need to flush the file
+    if (sd_card->bytes_written >= SD_FLUSH_BYTES)
+    {
         res = f_sync(sd_card->file);
         if (res != FR_OK)
         {
             return false; // Error flushing file
         }
-        sd_current_bytes_written = 0; // Reset the byte counter after flushing
-    }
-
-    return true; // Successfully wrote data
-}
-// Dummy define for compilation, remove before commit
-#define ACCELEROMETER_SAMPLE_SIZE_SINGLE 64
-
-bool PL_SDCard_WriteData_RawADC(
-    PL_SDCard_Handler *sd_card,
-    const uint16_t *x_buffer,
-    const uint16_t *y_buffer,
-    const uint16_t *z_buffer)
-{
-    // prefix to identify the packet type (raw ADC data)
-    const char prefix[] = "RawADC__";
-    UINT bytes_written;
-    FRESULT res = f_write(sd_card->file, prefix, sizeof(prefix) - 1, &bytes_written);
-    if (res != FR_OK || bytes_written != sizeof(prefix) - 1)
-    {
-        return false;
-    }
-    sd_current_bytes_written += bytes_written;
-
-    // copy/pack into struct
-    RawADC_msg msg;
-    memcpy(msg.x_buffer, x_buffer, sizeof(msg.x_buffer));
-    memcpy(msg.y_buffer, y_buffer, sizeof(msg.y_buffer));
-    memcpy(msg.z_buffer, z_buffer, sizeof(msg.z_buffer)); // is this correct?
-
-    // Write struct to file
-    res = f_write(sd_card->file, &msg, sizeof(msg), &bytes_written);
-    if (res != FR_OK || bytes_written != sizeof(msg))
-    {
-        return false;
-    }
-    sd_current_bytes_written += bytes_written;
-
-    // Flush if needed
-    if (sd_current_bytes_written >= SD_FLUSH_BYTES)
-    {
-        res = f_sync(sd_card->file);
-        if (res != FR_OK)
-        {
-            return false;
-        }
-        sd_current_bytes_written = 0; // Reset the byte counter after flushing
+        sd_card->bytes_written = 0; // Reset the byte counter after flushing
     }
 
     return true;

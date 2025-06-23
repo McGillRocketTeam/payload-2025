@@ -10,6 +10,8 @@
 
 #include <stdbool.h>
 #include "fatfs.h"
+// TODO: Uncomment line to get accelerometer sizes after merging accelerometer code
+// #include "accelerometer.h"
 
 /**
  * Data files will be named in the format:
@@ -17,6 +19,8 @@
  */
 #define SD_FILE_BASE_NAME "data"
 #define SD_FILE_EXTENSION "pl"
+#define SD_PACKET_HEADER_TELEMETRY "TEL"
+#define SD_PACKET_HEADER_ACCELEROMETER "ACC"
 // Flushing the file is required after writing a certain number of bytes
 #define SD_FLUSH_BYTES 512
 // FATFS limits file name length to 12 characters
@@ -26,6 +30,7 @@ typedef struct
 {
     FATFS *fs;
     FIL *file;
+    UINT bytes_written;
 } PL_SDCard_Handler;
 
 typedef struct __attribute__((packed))
@@ -39,17 +44,16 @@ typedef struct __attribute__((packed))
     uint16_t current_pressure;
     uint16_t current_humidity;
     uint8_t battery_voltage;
-} normal_msg;
+} SD_packet_telemetry;
 
-#define ACCELEROMETER_SAMPLE_SIZE_SINGLE 256
+// TODO: Remove before merging accelerometer code
+#define FFT_SIZE_SINGLE 256
 typedef struct
 {
-    uint16_t x_buffer[ACCELEROMETER_SAMPLE_SIZE_SINGLE];
-    uint16_t y_buffer[ACCELEROMETER_SAMPLE_SIZE_SINGLE];
-    uint16_t z_buffer[ACCELEROMETER_SAMPLE_SIZE_SINGLE];
-} RawADC_msg;
-
-static uint16_t sd_current_bytes_written = 0;
+    uint16_t x_buffer[FFT_SIZE_SINGLE];
+    uint16_t y_buffer[FFT_SIZE_SINGLE];
+    uint16_t z_buffer[FFT_SIZE_SINGLE];
+} SD_packet_accelerometer;
 
 /**
  * @brief Initializes the SD card handler and mounts the filesystem.
@@ -72,7 +76,7 @@ bool PL_SDCard_Open(PL_SDCard_Handler *sd_card);
  */
 bool PL_SDCard_Close(PL_SDCard_Handler *sd_card);
 /**
- * @brief Writes data to the file on the SD card. Flushes the writes if the lines written exceeds
+ * @brief Writes a telemetry packet to the file on the SD card. Flushes the writes if the lines written exceeds `SD_FLUSH_BYTES`.
  * @param sd_card Pointer to the SD card handler structure.
  * @param ok
  * @param sampling_state is the sampling on or off?
@@ -85,11 +89,7 @@ bool PL_SDCard_Close(PL_SDCard_Handler *sd_card);
  * @return true if data was written successfully, false otherwise.
  * @note This function assumes that the file is already opened.
  */
-/* TODO: Decide what format data will be written in and what the function signature should be.
- * Not everything can be logged at the same time since the ADC data can only be acquired in chunks
- * via the conversion half-complete callbacks.
- */
-bool PL_SDCard_WriteDataNormal(
+bool PL_SDCard_WriteTelemetry(
     PL_SDCard_Handler *sd_card,
     bool ok,
     bool sampling_state,
@@ -100,8 +100,19 @@ bool PL_SDCard_WriteDataNormal(
     uint16_t current_pressure,
     uint16_t current_humidity,
     uint8_t battery_voltage);
-
-bool PL_SDCard_WriteData_RawADC(
-    /* TODO FILL OUt*/);
+/**
+ * @brief Writes a telemetry packet to the file on the SD card. Flushes the writes if the lines written exceeds `SD_FLUSH_BYTES`.
+ * @param sd_card Pointer to the SD card handler structure.
+ * @param x_buffer Pointer to buffer containing the x-axis accelerometer data. Should be of size `FFT_SIZE_SINGLE`.
+ * @param y_buffer Pointer to buffer containing the y-axis accelerometer data. Should be of size `FFT_SIZE_SINGLE`.
+ * @param z_buffer Pointer to buffer containing the z-axis accelerometer data. Should be of size `FFT_SIZE_SINGLE`.
+ * @return true if data was written successfully, false otherwise.
+ * @note This function assumes that the file is already opened.
+ */
+bool PL_SDCard_WriteAccelerometer(
+    PL_SDCard_Handler *sd_card,
+    uint16_t *x_buffer,
+    uint16_t *y_buffer,
+    uint16_t *z_buffer);
 
 #endif /* INC_SD_CARD_H_ */
