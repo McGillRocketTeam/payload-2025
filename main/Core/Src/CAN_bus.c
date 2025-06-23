@@ -4,7 +4,7 @@
 // Temperature values are in degrees Celsius. To be finalized by: payload software + ground station teams
 float temperatures[N_TEMPERATURES] = {1, 5, 10, 15, 20, 25, 30, 37};
 
-bool PL_CANBus_Init(PL_CANBus_Handler *c, CAN_HandleTypeDef *hcan, uint32_t base_id)
+bool PL_CANBus_Init(PL_CANBus_Handler *c, CAN_HandleTypeDef *hcan)
 {
 #if CAN_BUS_ENABLED
     // Initialize CAN bus handler
@@ -18,7 +18,7 @@ bool PL_CANBus_Init(PL_CANBus_Handler *c, CAN_HandleTypeDef *hcan, uint32_t base
         c->Tx_headers[i].ExtId = 0;
         c->Tx_headers[i].IDE = CAN_ID_STD;
         c->Tx_headers[i].RTR = CAN_RTR_DATA;
-        c->Tx_headers[i].StdId = base_id + i;
+        c->Tx_headers[i].StdId = CAN_BASE_ID + i;
         c->Tx_headers[i].TransmitGlobalTime = DISABLE;
     }
 

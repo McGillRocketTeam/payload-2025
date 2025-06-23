@@ -13,6 +13,8 @@
 #include <stdio.h>
 #include "stm32f4xx.h"
 
+// Base ID for the CAN messages. Message ID is the base ID for the first message, and subsequent messages are assigned sequential IDs.
+#define CAN_BASE_ID 0x300
 #define N_MESSAGES 3
 #define CAN_SEND_TIMEOUT 100
 
@@ -100,10 +102,9 @@ typedef struct
  * @brief Initializes the CAN bus with the given CAN peripheral and base ID.
  * @param c Pointer to the CAN bus handler structure.
  * @param hcan Pointer to the CAN peripheral handle.
- * @param base_id Base ID for the CAN messages. Message ID is the base ID for the first message, and subsequent messages are assigned sequential IDs.
  * @return true if initialization is successful, false otherwise.
  */
-bool PL_CANBus_Init(PL_CANBus_Handler *c, CAN_HandleTypeDef *hcan, uint32_t base_id);
+bool PL_CANBus_Init(PL_CANBus_Handler *c, CAN_HandleTypeDef *hcan);
 
 /**
  * @brief Receives a CAN message and updates the command_ready flag.

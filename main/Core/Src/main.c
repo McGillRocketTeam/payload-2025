@@ -135,7 +135,7 @@ int main(void)
   printf("Initializing...\r\n");
 
   printf("Starting CAN bus...\r\n");
-  if (!PL_CANBus_Init(&can, &hcan1, 0x200))
+  if (!PL_CANBus_Init(&can, &hcan1))
   {
 	  printf("CAN bus initialization error.\r\n");
 	  Error_Handler();
