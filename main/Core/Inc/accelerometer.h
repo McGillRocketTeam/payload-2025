@@ -13,13 +13,13 @@
 #include <stdbool.h>
 
 #define ACCELEROMETER_SAMPLE_SIZE_SINGLE 4096
-#define ACCELEROMETER_HIGH_VOLTAGE 3.3
 #define ACCELEROMETER_SAMPLE_SIZE_TRIPLE (ACCELEROMETER_SAMPLE_SIZE_SINGLE * 3)
 #define FFT_SIZE_SINGLE (ACCELEROMETER_SAMPLE_SIZE_SINGLE / 2)
 #define FFT_SIZE_TRIPLE (FFT_SIZE_SINGLE * 3)
 // TODO: Verify if the +1 is correct
 #define FFT_AMPLITUDE_SIZE (FFT_SIZE_SINGLE / 2 + 1)
 
+#define ACCELEROMETER_HIGH_VOLTAGE 3.3f
 #define SAMPLE_RATE_HZ 10000.0f
 
 typedef struct {
@@ -63,7 +63,7 @@ bool PL_Accelerometer_Stop(PL_Accelerometer_Handler *accel);
  * @param accel Pointer to the accelerometer handler structure.
  * @param buffer Pointer to the source buffer of raw triplet data which the ADCs write to.
  */
-void PL_Accelerometer_Record(PL_Accelerometer_Handler *accel, uint16_t *buffer);
+void PL_Accelerometer_Record(PL_Accelerometer_Handler *accel, volatile uint16_t *buffer);
 /**
  * @brief Performs FFT analysis on all three axes of the recorded accelerometer data. 
  * Populates all three accelerometer amplitude buffers.

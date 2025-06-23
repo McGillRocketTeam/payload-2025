@@ -9,7 +9,7 @@
 #include "accelerometer.h"
 #include "enabled.h"
 
-bool PL_ADC_Init(PL_ADC_Handler *adc, ADC_HandleTypeDef *hadc1, ADC_HandleTypeDef *hadc2, ADC_HandleTypeDef *hadc3, uint16_t *accelerometer_buffer)
+bool PL_ADC_Init(PL_ADC_Handler *adc, ADC_HandleTypeDef *hadc1, ADC_HandleTypeDef *hadc2, ADC_HandleTypeDef *hadc3, volatile uint16_t *accelerometer_buffer)
 {
     adc->hadc1 = hadc1;
     adc->hadc2 = hadc2;

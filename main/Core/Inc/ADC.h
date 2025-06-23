@@ -30,7 +30,7 @@ typedef struct
  * @param accelerometer_buffer Pointer to the buffer where the accelerometer data will be stored. Should be of size `ACCELEROMETER_SAMPLE_SIZE_TRIPLE`.
  * @return true if initialization is successful, false otherwise.
  */
-bool PL_ADC_Init(PL_ADC_Handler *adc, ADC_HandleTypeDef *hadc1, ADC_HandleTypeDef *hadc2, ADC_HandleTypeDef *hadc3, uint16_t *accelerometer_buffer);
+bool PL_ADC_Init(PL_ADC_Handler *adc, ADC_HandleTypeDef *hadc1, ADC_HandleTypeDef *hadc2, ADC_HandleTypeDef *hadc3, volatile uint16_t *accelerometer_buffer);
 /**
  * @brief Stops the ADCs.
  * @param adc Pointer to the ADC handler structure.

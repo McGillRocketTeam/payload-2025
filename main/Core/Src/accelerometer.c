@@ -37,7 +37,7 @@ bool PL_Accelerometer_Stop(PL_Accelerometer_Handler *accel)
     return HAL_TIM_Base_Stop(accel->timer) == HAL_OK;
 }
 
-void PL_Accelerometer_Record(PL_Accelerometer_Handler *accel, uint16_t *buffer)
+void PL_Accelerometer_Record(PL_Accelerometer_Handler *accel, volatile uint16_t *buffer)
 {
     // Copy the data from the buffer to the FFT buffers
     for (int i = 0; i < FFT_SIZE_TRIPLE; i += 3)
