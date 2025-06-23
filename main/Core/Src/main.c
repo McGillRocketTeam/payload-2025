@@ -35,7 +35,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define TIM_TEMPERATURE_SAMPLE htim2
+#define TIM_PELTIER_REFERENCE htim3
+#define TIM_PELTIER_PWM htim4
+#define TIM_BLINK htim9
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -153,14 +156,14 @@ int main(void)
     Error_Handler();
   }
   // Start temperature sample timer
-  if (HAL_TIM_Base_Start_IT(&htim2) != HAL_OK)
+  if (HAL_TIM_Base_Start_IT(&TIM_TEMPERATURE_SAMPLE) != HAL_OK)
   {
     printf("Temperature sample timer start error.\r\n");
     Error_Handler();
   }
 
   printf("Initializing Peltier cooler PWM output...\r\n");
-  if (!PL_Peltier_Init(&peltier, &htim4, &htim3, TIM_CHANNEL_1, TIM_CHANNEL_1))
+  if (!PL_Peltier_Init(&peltier, &TIM_PELTIER_PWM, &TIM_PELTIER_REFERENCE, TIM_CHANNEL_1, TIM_CHANNEL_1))
   {
     printf("Peltier cooler initialization error.\r\n");
     Error_Handler();
@@ -788,11 +791,11 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  if (htim->Instance == TIM2)
+  if (htim->Instance == TIM_TEMPERATURE_SAMPLE.Instance)
   {
     BME280_Measure();
   }
-  else if (htim->Instance == TIM9)
+  else if (htim->Instance == TIM_BLINK.Instance)
   {
     PL_Blink_Toggle(&blink);
   }
