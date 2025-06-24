@@ -232,8 +232,10 @@ int main(void)
 
     if (blink_toggle_ready)
     {
-      PL_Blink_Toggle(&blink);
-      printf("Light blinked. Time: %ld", HAL_GetTick());
+      if (PL_Blink_Toggle(&blink))
+      {
+        printf("Light blinked. Time: %ld\r\n", HAL_GetTick());
+      }
       blink_toggle_ready = 0;
     }
     /* USER CODE END WHILE */

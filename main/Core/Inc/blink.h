@@ -43,9 +43,9 @@ bool PL_Blink_Stop(PL_Blink_Handler *blink);
 /**
  * @brief Toggles the blinking state of the LED, taking into account whether the final build initialization time has passed.
  * @param blink Pointer to the `PL_Blink_Handler` structure.
- * @return true if the LED was toggled successfully, false otherwise.
+ * @return true if the LED was actually toggled successfully, false if skipped.
  * @note This function should be called periodically, typically in a timer interrupt.
  */
-void PL_Blink_Toggle(PL_Blink_Handler *blink);
+bool PL_Blink_Toggle(PL_Blink_Handler *blink);
 
 #endif /* INC_BLINK_H_ */

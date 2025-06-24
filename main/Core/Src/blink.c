@@ -8,7 +8,7 @@
 #include "blink.h"
 #include "enabled.h"
 
-void blink_slow(PL_Blink_Handler *blink);
+bool blink_slow(PL_Blink_Handler *blink);
 
 void PL_Blink_Init(PL_Blink_Handler *blink, TIM_HandleTypeDef *htim, GPIO_TypeDef *port, uint16_t pin)
 {
@@ -46,7 +46,7 @@ bool PL_Blink_Stop(PL_Blink_Handler *blink)
 #endif
 }
 
-void PL_Blink_Toggle(PL_Blink_Handler *blink)
+bool PL_Blink_Toggle(PL_Blink_Handler *blink)
 {
 #if BLINK_ENABLED
 #if FINAL_BUILD
@@ -54,26 +54,29 @@ void PL_Blink_Toggle(PL_Blink_Handler *blink)
     {
     	// Blink fast (every time this function is called)
         HAL_GPIO_TogglePin(blink->port, blink->pin);
+        return true;
     }
     else
     {
-    	blink_slow(blink);
+    	return blink_slow(blink);
     }
 #else
-    blink_slow(blink);
+    return blink_slow(blink);
 #endif
 #endif
 }
 
-void blink_slow(PL_Blink_Handler *blink)
+bool blink_slow(PL_Blink_Handler *blink)
 {
 #if BLINK_ENABLED
 	// Only blink the LED every certain number of times the timer interrupt is triggered
-    if (blink->count == 0)
+    bool blinked = blink->count == 0;
+    if (blinked)
     {
         HAL_GPIO_TogglePin(blink->port, blink->pin);
     }
     blink->count++;
     blink->count %= BLINK_COUNTER_PERIOD;
+    return blinked;
 #endif
 }
