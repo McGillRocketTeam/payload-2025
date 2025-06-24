@@ -56,6 +56,7 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart4;
+uint8_t count;
 
 /* USER CODE BEGIN PV */
 PL_SDCard_Handler sd_card;
@@ -139,12 +140,37 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  count=0;
+  if (!PL_SDCard_WriteTelemetry(&sd_card,count%2,count%2,HAL_GetTick(),count%2,count, count+1,count+2,count+3,count+4)){
+	  printf("telemetry error\r\n");
+	    Error_Handler();
+
+  }
+
+  uint16_t x_buf[FFT_SIZE_SINGLE];
+  uint16_t y_buf[FFT_SIZE_SINGLE];
+  uint16_t z_buf[FFT_SIZE_SINGLE];
+
+  for (int i=0; i<FFT_SIZE_SINGLE; i++){
+	  x_buf[i]=count+i;
+	  y_buf[i]=count+i+1;
+	  z_buf[i]=count+i+2;
+  }
+  if(!PL_SDCard_WriteAccelerometer(&sd_card,x_buf,y_buf,z_buf)){
+	  printf("accelerometer error\r\n");
+	    Error_Handler();
+
+  }
+
+  if(!PL_SDCard_Close(&sd_card)){
+	  printf("closing error\r\n");
+	    Error_Handler();
+
+  }
+
   while (1)
   {
-	  printf("Time: %ld\r\n", HAL_GetTick());
-	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-	  HAL_Delay(1000);
-    /* USER CODE END WHILE */
+	 /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
