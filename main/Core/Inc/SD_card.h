@@ -18,7 +18,7 @@
  * "data0.pl", "data1.pl", ..., "dataN.pl"
  */
 #define SD_FILE_BASE_NAME "data"
-#define SD_FILE_EXTENSION "pl"
+#define SD_FILE_EXTENSION "pld"
 #define SD_PACKET_HEADER_TELEMETRY "TEL"
 #define SD_PACKET_HEADER_ACCELEROMETER "ACC"
 // Flushing the file is required after writing a certain number of bytes
@@ -28,8 +28,8 @@
 
 typedef struct
 {
-    FATFS *fs;
-    FIL *file;
+    FATFS fs;
+    FIL file;
     UINT bytes_written;
 } PL_SDCard_Handler;
 
@@ -62,7 +62,7 @@ typedef struct
  * @param file Pointer to the FIL structure.
  * @return true if initialization was successful, false otherwise.
  */
-bool PL_SDCard_Init(PL_SDCard_Handler *sd_card, FATFS *fs, FIL *file);
+bool PL_SDCard_Init(PL_SDCard_Handler *sd_card);
 /**
  * @brief Opens a file on the SD card with a unique name.
  * @param sd_card Pointer to the SD card handler structure.

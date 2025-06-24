@@ -13,7 +13,7 @@
 
 bool write_packet(PL_SDCard_Handler *sd_card, const char *prefix, size_t size_prefix, const void *data, size_t size_data);
 
-bool PL_SDCard_Init(PL_SDCard_Handler *sd_card, FATFS *fs, FIL *file)
+bool PL_SDCard_Init(PL_SDCard_Handler *sd_card)
 {
 #if SD_CARD_ENABLED
     // Ensure SD card is inserted (the GPIO pin is low when the card is inserted)
@@ -23,13 +23,10 @@ bool PL_SDCard_Init(PL_SDCard_Handler *sd_card, FATFS *fs, FIL *file)
         return false;
     }
 
-    sd_card->fs = fs;
-    sd_card->file = file;
-
     // Mount the filesystem
     // path = "" for the root directory
     // opt = 1 to force immediate mount
-    return f_mount(sd_card->fs, "", 1) == FR_OK;
+    return f_mount(&sd_card->fs, "", 1) == FR_OK;
 #else
     return true;
 #endif
@@ -59,7 +56,7 @@ bool PL_SDCard_Open(PL_SDCard_Handler *sd_card)
     }
 
     // Create and open the file, return success status
-    return f_open(sd_card->file, name, FA_CREATE_NEW | FA_WRITE) == FR_OK;
+    return f_open(&sd_card->file, name, FA_CREATE_NEW | FA_WRITE) == FR_OK;
 #else
     return true;
 #endif
@@ -68,7 +65,7 @@ bool PL_SDCard_Open(PL_SDCard_Handler *sd_card)
 bool PL_SDCard_Close(PL_SDCard_Handler *sd_card)
 {
 #if SD_CARD_ENABLED
-    return f_close(sd_card->file) == FR_OK;
+    return f_close(&sd_card->file) == FR_OK;
 #else
     return true;
 #endif
@@ -132,7 +129,7 @@ bool write_packet(PL_SDCard_Handler *sd_card, const char *prefix, size_t size_pr
     UINT bytes_written;
     FRESULT res;
 
-    res = f_write(sd_card->file, (void *) prefix, size_prefix, &bytes_written);
+    res = f_write(&sd_card->file, (void *) prefix, size_prefix, &bytes_written);
     // Error writing prefix, or didn't write the expected number of bytes
     if (res != FR_OK || bytes_written != size_prefix)
     {
@@ -140,7 +137,7 @@ bool write_packet(PL_SDCard_Handler *sd_card, const char *prefix, size_t size_pr
     }
     sd_card->bytes_written += bytes_written;
 
-    res = f_write(sd_card->file, data, size_data, &bytes_written);
+    res = f_write(&sd_card->file, data, size_data, &bytes_written);
     // Error writing to file, or didn't write the expected number of bytes
     if (res != FR_OK || bytes_written != size_data)
     {
@@ -151,7 +148,7 @@ bool write_packet(PL_SDCard_Handler *sd_card, const char *prefix, size_t size_pr
     // Check if we need to flush the file
     if (sd_card->bytes_written >= SD_FLUSH_BYTES)
     {
-        res = f_sync(sd_card->file);
+        res = f_sync(&sd_card->file);
         if (res != FR_OK)
         {
             return false; // Error flushing file

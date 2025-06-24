@@ -59,9 +59,6 @@ UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
 PL_SDCard_Handler sd_card;
-
-FATFS fs;
-FIL file;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -128,7 +125,7 @@ int main(void)
   printf("Beginning initialization...\r\n");
 
   printf("Initializing SD card...\r\n");
-  if (!PL_SDCard_Init(&sd_card, &fs, &file))
+  if (!PL_SDCard_Init(&sd_card))
   {
     printf("SD card initialization/mount error.\r\n");
     Error_Handler();
