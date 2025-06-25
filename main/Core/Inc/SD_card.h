@@ -48,7 +48,7 @@ typedef struct __attribute__((packed))
 
 // TODO: Remove before merging accelerometer code
 #define FFT_SIZE_SINGLE 256
-typedef struct
+typedef struct __attribute__((packed))
 {
     uint32_t time_elapsed;
     uint16_t x_buffer[FFT_SIZE_SINGLE];
