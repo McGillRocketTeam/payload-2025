@@ -9,8 +9,8 @@
 #include "arm_math.h"
 #include "serial_monitor.h"
 
-#define NORMALIZED_AMPLITUDE(a, b) ((a * a + b * b) / FFT_SIZE_SINGLE)
-#define INDEX_TO_FREQUENCY(i) ((float)i * SAMPLE_RATE_HZ / FFT_SIZE_SINGLE / 2.0f)
+#define NORMALIZED_AMPLITUDE(a, b) (sqrtf(a * a + b * b) / FFT_SIZE_SINGLE)
+#define INDEX_TO_FREQUENCY(i) ((float)i * SAMPLE_RATE_HZ / FFT_SIZE_SINGLE)
 
 bool PL_Accelerometer_Init(PL_Accelerometer_Handler *accel, TIM_HandleTypeDef *timer, GPIO_TypeDef *power_GPIO_Port, uint16_t power_Pin)
 {
@@ -57,13 +57,13 @@ void PL_Accelerometer_Analyze(PL_Accelerometer_Handler *accel)
         return; // Analysis not ready
     }
 
-    float voltage_x[FFT_SIZE_SINGLE] = {0};
-    float voltage_y[FFT_SIZE_SINGLE] = {0};
-    float voltage_z[FFT_SIZE_SINGLE] = {0};
+    float32_t voltage_x[FFT_SIZE_SINGLE] = {0};
+    float32_t voltage_y[FFT_SIZE_SINGLE] = {0};
+    float32_t voltage_z[FFT_SIZE_SINGLE] = {0};
 
-    float fft_output_x[FFT_SIZE_SINGLE] = {0};
-    float fft_output_y[FFT_SIZE_SINGLE] = {0};
-    float fft_output_z[FFT_SIZE_SINGLE] = {0};
+    float32_t fft_output_x[FFT_SIZE_SINGLE] = {0};
+    float32_t fft_output_y[FFT_SIZE_SINGLE] = {0};
+    float32_t fft_output_z[FFT_SIZE_SINGLE] = {0};
 
     for (int i = 0; i < FFT_SIZE_SINGLE; i++)
     {
@@ -74,17 +74,9 @@ void PL_Accelerometer_Analyze(PL_Accelerometer_Handler *accel)
 
     // gonna assume amp buffers intialized elsewhere
 
-    uint32_t time = HAL_GetTick();
-    printf("BEFORE X: %ld\r\n", HAL_GetTick() - time);
-    arm_rfft_fast_f32(&accel->fft_handler, voltage_x, (float *)fft_output_x, 0);
-    printf("time after x: %ld\r\n", HAL_GetTick() - time);
-    time = HAL_GetTick();
-    arm_rfft_fast_f32(&accel->fft_handler, voltage_y, (float *)fft_output_y, 0);
-    printf("time after y: %ld\r\n", HAL_GetTick() - time);
-    time = HAL_GetTick();
-    arm_rfft_fast_f32(&accel->fft_handler, voltage_z, (float *)fft_output_z, 0);
-    printf("time after z: %ld\r\n", HAL_GetTick() - time);
-    printf("AFTER Z: %ld\r\n", HAL_GetTick() - time);
+    arm_rfft_fast_f32(&accel->fft_handler, voltage_x, (float32_t *)fft_output_x, 0);
+    arm_rfft_fast_f32(&accel->fft_handler, voltage_y, (float32_t *)fft_output_y, 0);
+    arm_rfft_fast_f32(&accel->fft_handler, voltage_z, (float32_t *)fft_output_z, 0);
 
     accel->amplitudes_x[0] = NORMALIZED_AMPLITUDE(fft_output_x[0], fft_output_x[1]);
     accel->amplitudes_y[0] = NORMALIZED_AMPLITUDE(fft_output_y[0], fft_output_y[1]);
@@ -106,8 +98,8 @@ void PL_Accelerometer_Analyze(PL_Accelerometer_Handler *accel)
 
 float PL_Accelerometer_PeakFrequency(float *amplitudes, float *peak_amplitude)
 {
-    int peak_index = 0;
-    for (int i = 0; i < FFT_AMPLITUDE_SIZE; i++)
+    int peak_index = 1; //ignore DC offset
+    for (int i = 1; i < FFT_AMPLITUDE_SIZE-1; i++)
     {
         if (amplitudes[i] > amplitudes[peak_index])
         {
