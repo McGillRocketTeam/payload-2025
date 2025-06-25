@@ -73,9 +73,9 @@ bool PL_SDCard_Close(PL_SDCard_Handler *sd_card)
 
 bool PL_SDCard_WriteTelemetry(
     PL_SDCard_Handler *sd_card,
+    uint32_t time_elapsed,
     bool ok,
     bool sampling_state,
-    uint32_t time_elapsed,
     bool temp_control_state,
     uint8_t target_temp,
     uint16_t current_temp,
@@ -86,9 +86,9 @@ bool PL_SDCard_WriteTelemetry(
 #if SD_CARD_ENABLED
     // Pack data into struct
     SD_packet_telemetry msg = {
+        .time_elapsed = time_elapsed,
         .ok = ok,
         .sampling_state = sampling_state,
-        .time_elapsed = time_elapsed,
         .temp_control_state = temp_control_state,
         .target_temp = target_temp,
         .current_temp = current_temp,
@@ -106,6 +106,7 @@ bool PL_SDCard_WriteTelemetry(
 
 bool PL_SDCard_WriteAccelerometer(
     PL_SDCard_Handler *sd_card,
+    uint32_t time_elapsed,
     uint16_t *x_buffer,
     uint16_t *y_buffer,
     uint16_t *z_buffer)
@@ -113,6 +114,7 @@ bool PL_SDCard_WriteAccelerometer(
 #if SD_CARD_ENABLED
     // Copy/pack into struct
     SD_packet_accelerometer msg;
+    msg.time_elapsed = time_elapsed;
     memcpy(&msg.x_buffer, x_buffer, sizeof(msg.x_buffer));
     memcpy(&msg.y_buffer, y_buffer, sizeof(msg.y_buffer));
     memcpy(&msg.z_buffer, z_buffer, sizeof(msg.z_buffer));

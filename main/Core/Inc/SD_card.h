@@ -35,9 +35,9 @@ typedef struct
 
 typedef struct __attribute__((packed))
 {
+    uint32_t time_elapsed;
     bool ok;
     bool sampling_state;
-    uint32_t time_elapsed;
     bool temp_control_state;
     uint8_t target_temp;
     uint16_t current_temp;
@@ -50,6 +50,7 @@ typedef struct __attribute__((packed))
 #define FFT_SIZE_SINGLE 256
 typedef struct
 {
+    uint32_t time_elapsed;
     uint16_t x_buffer[FFT_SIZE_SINGLE];
     uint16_t y_buffer[FFT_SIZE_SINGLE];
     uint16_t z_buffer[FFT_SIZE_SINGLE];
@@ -91,9 +92,9 @@ bool PL_SDCard_Close(PL_SDCard_Handler *sd_card);
  */
 bool PL_SDCard_WriteTelemetry(
     PL_SDCard_Handler *sd_card,
+    uint32_t time_elapsed,
     bool ok,
     bool sampling_state,
-    uint32_t time_elapsed,
     bool temp_control_state,
     uint8_t target_temp,
     uint16_t current_temp,
@@ -111,6 +112,7 @@ bool PL_SDCard_WriteTelemetry(
  */
 bool PL_SDCard_WriteAccelerometer(
     PL_SDCard_Handler *sd_card,
+    uint32_t time_elapsed,
     uint16_t *x_buffer,
     uint16_t *y_buffer,
     uint16_t *z_buffer);
