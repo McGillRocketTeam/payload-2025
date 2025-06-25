@@ -63,6 +63,9 @@ PL_Accelerometer_Handler accelerometer;
 
 // Accelerometer buffer which DMA will write to. Needs to be shared a bit, so declared in main.
 volatile uint16_t accelerometer_buffer[ACCELEROMETER_SAMPLE_SIZE_TRIPLE];
+
+float peak_amp_x, peak_amp_y, peak_amp_z;
+float peak_freq_x, peak_freq_y, peak_freq_z;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -154,32 +157,31 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  printf("Time: %ld\r\n", HAL_GetTick());
-	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+//	  printf("Time: %ld\r\n", HAL_GetTick());
+//	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
 	  if (accelerometer.analysis_ready)
     {
       // Perform FFT analysis (stored in amplitude buffers)
 		  PL_Accelerometer_Analyze(&accelerometer);
       // Find peak amplitudes and frequencies on each axis
-		  float amp_x, amp_y, amp_z;
-		  float freq_x = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_x, &amp_x);
-		  float freq_y = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_y, &amp_y);
-		  float freq_z = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_z, &amp_z);
+		  peak_freq_x = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_x, &peak_amp_x);
+//		  peak_freq_y = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_y, &peak_amp_y);
+//		  peak_freq_z = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_z, &peak_amp_z);
 
-		  printf("freq_x: %d amp_x: %d\r\n", (int) freq_x, (int) (1000 * amp_x));
-		  printf("freq_y: %d amp_y: %d\r\n", (int) freq_y, (int) (1000 * amp_y));
-		  printf("freq_z: %d amp_z: %d\r\n", (int) freq_z, (int) (1000 * amp_z));
+		  printf("peak_freq_x: %d amp_x: %d\r\n", (int) peak_freq_x, (int) (1000 * peak_amp_x));
+//		  printf("peak_freq_y: %d amp_y: %d\r\n", (int) peak_freq_y, (int) (1000 * peak_amp_y));
+//		  printf("peak_freq_z: %d amp_z: %d\r\n", (int) peak_freq_z, (int) (1000 * peak_amp_z));
 	  }
 
     // TODO: Convert injected conversions to be software triggered by a timer interrupt or by a timer trigger output
-	  PL_ADC_InjectedConversion(&adc);
+//	  PL_ADC_InjectedConversion(&adc);
 
-	  printf(
-      "Injected conversion: %d battery, %d current\r\n",
-      (int) (100 * PL_ADC_GetBatteryVoltage(&adc)),
-      (int) (100 * PL_ADC_GetCoolerCurrent(&adc))
-    );
+//	  printf(
+////      "Injected conversion: %d battery, %d current\r\n",
+////      (int) (100 * PL_ADC_GetBatteryVoltage(&adc)),
+////      (int) (100 * PL_ADC_GetCoolerCurrent(&adc))
+//    );
 	  HAL_Delay(50);
     /* USER CODE END WHILE */
 
@@ -769,7 +771,6 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 {
 	if (hadc == &hadc1)
 	{
-		printf("ADC buffer half complete, %ld\r\n", HAL_GetTick());
 		PL_Accelerometer_Record(&accelerometer, accelerometer_buffer);
 	}
 }
@@ -778,7 +779,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
 	if (hadc == &hadc1)
 	{
-		printf("ADC buffer complete, %ld\r\n", HAL_GetTick());
 		PL_Accelerometer_Record(&accelerometer, &accelerometer_buffer[FFT_SIZE_TRIPLE]);
 	}
 }

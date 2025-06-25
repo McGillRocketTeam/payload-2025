@@ -78,20 +78,13 @@ void PL_Accelerometer_Analyze(PL_Accelerometer_Handler *accel)
     arm_rfft_fast_f32(&accel->fft_handler, voltage_y, (float32_t *)fft_output_y, 0);
     arm_rfft_fast_f32(&accel->fft_handler, voltage_z, (float32_t *)fft_output_z, 0);
 
-    accel->amplitudes_x[0] = NORMALIZED_AMPLITUDE(fft_output_x[0], fft_output_x[1]);
-    accel->amplitudes_y[0] = NORMALIZED_AMPLITUDE(fft_output_y[0], fft_output_y[1]);
-    accel->amplitudes_z[0] = NORMALIZED_AMPLITUDE(fft_output_z[0], fft_output_z[1]);
-
-    for (int i = 2; i < FFT_SIZE_SINGLE - 2; i += 2)
+ //no need to analyze DC and nyquist frequencies separately since not used
+    for (int i = 0; i < FFT_SIZE_SINGLE; i += 2)
     {
         accel->amplitudes_x[i / 2] = 2 * NORMALIZED_AMPLITUDE(fft_output_x[i], fft_output_x[i + 1]);
         accel->amplitudes_y[i / 2] = 2 * NORMALIZED_AMPLITUDE(fft_output_y[i], fft_output_y[i + 1]);
         accel->amplitudes_z[i / 2] = 2 * NORMALIZED_AMPLITUDE(fft_output_z[i], fft_output_z[i + 1]);
     }
-
-    accel->amplitudes_x[FFT_SIZE_SINGLE / 2 - 1] = NORMALIZED_AMPLITUDE(fft_output_x[FFT_SIZE_SINGLE - 2], fft_output_x[FFT_SIZE_SINGLE - 1]);
-    accel->amplitudes_y[FFT_SIZE_SINGLE / 2 - 1] = NORMALIZED_AMPLITUDE(fft_output_y[FFT_SIZE_SINGLE - 2], fft_output_y[FFT_SIZE_SINGLE - 1]);
-    accel->amplitudes_z[FFT_SIZE_SINGLE / 2 - 1] = NORMALIZED_AMPLITUDE(fft_output_z[FFT_SIZE_SINGLE - 2], fft_output_z[FFT_SIZE_SINGLE - 1]);
 
     accel->analysis_ready = false;
 }
