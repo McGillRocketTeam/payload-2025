@@ -55,14 +55,12 @@ bool PL_ADC_InjectedConversion(PL_ADC_Handler *adc)
 float PL_ADC_GetBatteryVoltage(PL_ADC_Handler *adc)
 {
     // TODO: Implement the actual voltage calculation based on the ADC value
-    // Maybe look into __HAL_ADC_CALC_VREFANALOG_VOLTAGE or __HAL_ADC_CALC_DATA_TO_VOLTAGE
     // https://community.st.com/t5/stm32-mcus/how-to-use-the-stm32-adc-s-internal-reference-voltage/ta-p/621425
-    // Preliminary formula: Vbat = (Vref * adc_value) / ADC_MAX_VALUE
-    return (adc->vbat_sample * 3.3f) / 4096.0f; // Assuming Vref is 3.3V and ADC resolution is 12 bits
+    return ADC_RAW_TO_VOLTAGE(adc->vbat_sample);
 }
 
 float PL_ADC_GetCoolerCurrent(PL_ADC_Handler *adc)
 {
     // TODO: Implement the actual current calculation based on the ADC value
-    return (float) adc->current_sample;
+    return ADC_RAW_TO_VOLTAGE(adc->current_sample);
 }

@@ -19,7 +19,6 @@
 // TODO: Verify if the +1 is correct
 #define FFT_AMPLITUDE_SIZE (FFT_SIZE_SINGLE / 2 + 1)
 
-#define ACCELEROMETER_HIGH_VOLTAGE 3.3f
 #define SAMPLE_RATE_HZ 10000.0f
 
 typedef struct {

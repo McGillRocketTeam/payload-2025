@@ -11,6 +11,13 @@
 #include "stm32f4xx.h"
 #include <stdbool.h>
 
+// Internal reference voltage for ADCs. ADCs convert voltages from 0 V to `ADC_VOLTAGE_MAX` V.
+#define ADC_VOLTAGE_MAX 3.3f
+// The ADCs are 12 bits, so the maximum raw ADC value is 2^12
+#define ADC_RAW_MAX 4096
+
+#define ADC_RAW_TO_VOLTAGE(raw) (raw * ADC_VOLTAGE_MAX / ADC_RAW_MAX)
+
 typedef struct
 {
 	ADC_HandleTypeDef *hadc1;
