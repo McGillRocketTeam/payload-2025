@@ -182,6 +182,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   printf("Beginning main loop.\r\n");
+  uint8_t count = 0;
   while (1)
   {
     if (can.command_ready)
@@ -235,6 +236,11 @@ int main(void)
       if (PL_Blink_Toggle(&blink))
       {
         printf("Light blinked. Time: %ld\r\n", HAL_GetTick());
+        if (!PL_CANBus_Send(&can, count % 2, (count + 1) % 2, count % 2, count, count + 1, count + 2, count + 3, count + 4, count + 5, count + 6, count + 7, count + 8, HAL_GetTick()))
+        {
+          printf("CAN bus send error\r\n");
+        }
+        count++;
       }
       blink_toggle_ready = 0;
     }
