@@ -166,22 +166,22 @@ int main(void)
       PL_Accelerometer_Analyze(&accelerometer);
       // Find peak amplitudes and frequencies on each axis
       peak_freq_x = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_x, &peak_amp_x);
-      // peak_freq_y = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_y, &peak_amp_y);
-      // peak_freq_z = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_z, &peak_amp_z);
+      peak_freq_y = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_y, &peak_amp_y);
+      peak_freq_z = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_z, &peak_amp_z);
 
       printf("peak_freq_x: %d amp_x: %d\r\n", (int)peak_freq_x, (int)(1000 * peak_amp_x));
-      // printf("peak_freq_y: %d amp_y: %d\r\n", (int)peak_freq_y, (int)(1000 * peak_amp_y));
-      // printf("peak_freq_z: %d amp_z: %d\r\n", (int)peak_freq_z, (int)(1000 * peak_amp_z));
+      printf("peak_freq_y: %d amp_y: %d\r\n", (int)peak_freq_y, (int)(1000 * peak_amp_y));
+      printf("peak_freq_z: %d amp_z: %d\r\n", (int)peak_freq_z, (int)(1000 * peak_amp_z));
     }
 
     // TODO: Convert injected conversions to be software triggered by a timer interrupt or by a timer trigger output
-    // PL_ADC_InjectedConversion(&adc);
+    PL_ADC_InjectedConversion(&adc);
 
-    // printf(
-    //     "Injected conversion: %d battery, %d current\r\n",
-    //     (int)(100 * PL_ADC_GetBatteryVoltage(&adc)),
-    //     (int)(100 * PL_ADC_GetCoolerCurrent(&adc)));
-    HAL_Delay(50);
+    printf(
+        "Injected conversion: %d mV battery, %d mA current\r\n",
+        (int)(1000 * PL_ADC_GetBatteryVoltage(&adc)),
+        (int)(1000 * PL_ADC_GetCoolerCurrent(&adc)));
+    HAL_Delay(100);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -300,7 +300,7 @@ static void MX_ADC1_Init(void)
   sConfigInjected.InjectedChannel = ADC_CHANNEL_2;
   sConfigInjected.InjectedRank = 1;
   sConfigInjected.InjectedNbrOfConversion = 1;
-  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_56CYCLES;
   sConfigInjected.ExternalTrigInjecConvEdge = ADC_EXTERNALTRIGINJECCONVEDGE_NONE;
   sConfigInjected.ExternalTrigInjecConv = ADC_INJECTED_SOFTWARE_START;
   sConfigInjected.AutoInjectedConv = DISABLE;
@@ -367,7 +367,7 @@ static void MX_ADC2_Init(void)
   sConfigInjected.InjectedChannel = ADC_CHANNEL_9;
   sConfigInjected.InjectedRank = 1;
   sConfigInjected.InjectedNbrOfConversion = 1;
-  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_112CYCLES;
+  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_56CYCLES;
   sConfigInjected.AutoInjectedConv = ENABLE;
   sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
   sConfigInjected.InjectedOffset = 0;

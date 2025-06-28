@@ -50,10 +50,10 @@ bool PL_ADC_InjectedConversion(PL_ADC_Handler *adc)
     }
     // ADC1 injected conversion for battery voltage
     HAL_StatusTypeDef poll_status1 = HAL_ADCEx_InjectedPollForConversion(adc->hadc1, HAL_MAX_DELAY);
-    adc->vbat_sample = (uint16_t) HAL_ADCEx_InjectedGetValue(adc->hadc1, ADC_INJECTED_RANK_1);
+    adc->current_sample = (uint16_t) HAL_ADCEx_InjectedGetValue(adc->hadc1, ADC_INJECTED_RANK_1);
     // ADC2 injected conversion for current
     HAL_StatusTypeDef poll_status2 = HAL_ADCEx_InjectedPollForConversion(adc->hadc2, HAL_MAX_DELAY);
-    adc->current_sample = (uint16_t) HAL_ADCEx_InjectedGetValue(adc->hadc2, ADC_INJECTED_RANK_1);
+    adc->vbat_sample = (uint16_t) HAL_ADCEx_InjectedGetValue(adc->hadc2, ADC_INJECTED_RANK_1);
     return poll_status1 == HAL_OK && poll_status2 == HAL_OK;
 }
 
