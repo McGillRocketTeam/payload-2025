@@ -20,6 +20,10 @@
 
 #define SAMPLE_RATE_HZ 10000.0f
 
+#define ACCELEROMETER_GAIN_X 2.0f
+#define ACCELEROMETER_GAIN_Y 1.33f
+#define ACCELEROMETER_GAIN_Z 1.0f
+
 typedef struct {
 	TIM_HandleTypeDef *timer;
 	GPIO_TypeDef *power_GPIO_Port;

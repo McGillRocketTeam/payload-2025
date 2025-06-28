@@ -17,7 +17,7 @@
 #include "ADC.h"
 #include "serial_monitor.h"
 
-#define ADC_RAW_TO_ACCELERATION(raw) (ADC_RAW_TO_VOLTAGE(raw) - ADC_VOLTAGE_HALF)
+#define ADC_RAW_TO_ACCELERATION(raw, gain) ((ADC_RAW_TO_VOLTAGE(raw) - ADC_VOLTAGE_HALF) / gain)
 #define NORMALIZED_AMPLITUDE(a, b) (sqrtf(a * a + b * b) / FFT_SIZE_SINGLE)
 #define INDEX_TO_FREQUENCY(i) ((float)i * SAMPLE_RATE_HZ / FFT_SIZE_SINGLE)
 
@@ -72,9 +72,9 @@ void PL_Accelerometer_Analyze(PL_Accelerometer_Handler *accel)
     float32_t voltage_z[FFT_SIZE_SINGLE] = {0};
     for (int i = 0; i < FFT_SIZE_SINGLE; i++)
     {
-        voltage_x[i] = ADC_RAW_TO_ACCELERATION(accel->fft_buffer_x[i]);
-        voltage_y[i] = ADC_RAW_TO_ACCELERATION(accel->fft_buffer_y[i]);
-        voltage_z[i] = ADC_RAW_TO_ACCELERATION(accel->fft_buffer_z[i]);
+        voltage_x[i] = ADC_RAW_TO_ACCELERATION(accel->fft_buffer_x[i], ACCELEROMETER_GAIN_X);
+        voltage_y[i] = ADC_RAW_TO_ACCELERATION(accel->fft_buffer_y[i], ACCELEROMETER_GAIN_Y);
+        voltage_z[i] = ADC_RAW_TO_ACCELERATION(accel->fft_buffer_z[i], ACCELEROMETER_GAIN_Z);
     }
 
     // Perform FFT and store in output buffers
