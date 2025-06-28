@@ -21,6 +21,8 @@
 #define NORMALIZED_AMPLITUDE(a, b) (sqrtf(a * a + b * b) / FFT_SIZE_SINGLE)
 #define INDEX_TO_FREQUENCY(i) ((float)i * SAMPLE_RATE_HZ / FFT_SIZE_SINGLE)
 
+void analyze_axis(arm_rfft_fast_instance_f32 *fft_handler, volatile uint16_t fft_buffer[FFT_SIZE_SINGLE], float32_t amplitudes[FFT_AMPLITUDE_SIZE], float gain);
+
 bool PL_Accelerometer_Init(PL_Accelerometer_Handler *accel, TIM_HandleTypeDef *timer, GPIO_TypeDef *power_GPIO_Port, uint16_t power_Pin)
 {
     accel->timer = timer;
@@ -66,36 +68,10 @@ void PL_Accelerometer_Analyze(PL_Accelerometer_Handler *accel)
         return; // Analysis not ready
     }
 
-    // Calculate voltage readings based on raw ADC values
-    float32_t voltage_x[FFT_SIZE_SINGLE] = {0};
-    float32_t voltage_y[FFT_SIZE_SINGLE] = {0};
-    float32_t voltage_z[FFT_SIZE_SINGLE] = {0};
-    for (int i = 0; i < FFT_SIZE_SINGLE; i++)
-    {
-        voltage_x[i] = ADC_RAW_TO_ACCELERATION(accel->fft_buffer_x[i], ACCELEROMETER_GAIN_X);
-        voltage_y[i] = ADC_RAW_TO_ACCELERATION(accel->fft_buffer_y[i], ACCELEROMETER_GAIN_Y);
-        voltage_z[i] = ADC_RAW_TO_ACCELERATION(accel->fft_buffer_z[i], ACCELEROMETER_GAIN_Z);
-    }
-
-    // Perform FFT and store in output buffers
-    float32_t fft_output_x[FFT_SIZE_SINGLE] = {0};
-    float32_t fft_output_y[FFT_SIZE_SINGLE] = {0};
-    float32_t fft_output_z[FFT_SIZE_SINGLE] = {0};
-    arm_rfft_fast_f32(&accel->fft_handler, voltage_x, fft_output_x, 0);
-    arm_rfft_fast_f32(&accel->fft_handler, voltage_y, fft_output_y, 0);
-    arm_rfft_fast_f32(&accel->fft_handler, voltage_z, fft_output_z, 0);
-
-    // Calculate DC frequency amplitude
-    accel->amplitudes_x[0] = NORMALIZED_AMPLITUDE(fft_output_x[0], fft_output_x[1]);
-    accel->amplitudes_y[0] = NORMALIZED_AMPLITUDE(fft_output_y[0], fft_output_y[1]);
-    accel->amplitudes_z[0] = NORMALIZED_AMPLITUDE(fft_output_z[0], fft_output_z[1]);
-    // Calculate other amplitudes
-    for (int i = 2; i < FFT_SIZE_SINGLE; i += 2)
-    {
-        accel->amplitudes_x[i / 2] = 2 * NORMALIZED_AMPLITUDE(fft_output_x[i], fft_output_x[i + 1]);
-        accel->amplitudes_y[i / 2] = 2 * NORMALIZED_AMPLITUDE(fft_output_y[i], fft_output_y[i + 1]);
-        accel->amplitudes_z[i / 2] = 2 * NORMALIZED_AMPLITUDE(fft_output_z[i], fft_output_z[i + 1]);
-    }
+    // Analyze each axis
+    analyze_axis(&accel->fft_handler, accel->fft_buffer_x, accel->amplitudes_x, ACCELEROMETER_GAIN_X);
+    analyze_axis(&accel->fft_handler, accel->fft_buffer_y, accel->amplitudes_y, ACCELEROMETER_GAIN_Y);
+    analyze_axis(&accel->fft_handler, accel->fft_buffer_z, accel->amplitudes_z, ACCELEROMETER_GAIN_Z);
 
     accel->analysis_ready = false;
 }
@@ -117,4 +93,27 @@ float PL_Accelerometer_PeakFrequency(float *amplitudes, float *peak_amplitude)
     }
     *peak_amplitude = amplitudes[peak_index];
     return INDEX_TO_FREQUENCY(peak_index);
+}
+
+void analyze_axis(arm_rfft_fast_instance_f32 *fft_handler, volatile uint16_t fft_buffer[FFT_SIZE_SINGLE], float32_t amplitudes[FFT_AMPLITUDE_SIZE], float gain)
+{
+    // Calculate voltage readings based on raw ADC values
+    float32_t voltages[FFT_SIZE_SINGLE] = {0};
+    for (int i = 0; i < FFT_SIZE_SINGLE; i++)
+    {
+        voltages[i] = ADC_RAW_TO_ACCELERATION(fft_buffer[i], gain);
+    }
+
+    // Perform FFT and store in output buffers
+    float32_t fft_outputs[FFT_SIZE_SINGLE] = {0};
+    // The final zero indicates were are not performing an inverse FFT
+    arm_rfft_fast_f32(fft_handler, voltages, fft_outputs, 0);
+
+    // Calculate DC frequency amplitude
+    amplitudes[0] = NORMALIZED_AMPLITUDE(fft_outputs[0], fft_outputs[1]);
+    // Calculate other amplitudes
+    for (int i = 2; i < FFT_SIZE_SINGLE; i += 2)
+    {
+        amplitudes[i / 2] = 2 * NORMALIZED_AMPLITUDE(fft_outputs[i], fft_outputs[i + 1]);
+    }
 }
