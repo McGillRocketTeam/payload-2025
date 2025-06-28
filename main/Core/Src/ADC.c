@@ -64,5 +64,6 @@ float PL_ADC_GetBatteryVoltage(PL_ADC_Handler *adc)
 
 float PL_ADC_GetCoolerCurrent(PL_ADC_Handler *adc)
 {
-    return ADC_RAW_TO_VOLTAGE(adc->current_sample) * COOLER_CURRENT_FACTOR + COOLER_CURRENT_OFFSET;
+    // This formula is slightly inaccurate for low currents
+    return (ADC_RAW_TO_VOLTAGE(adc->current_sample) - COOLER_CURRENT_OFFSET) * COOLER_CURRENT_FACTOR;
 }
