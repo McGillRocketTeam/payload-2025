@@ -7,16 +7,17 @@
 
 #include "accelerometer.h"
 /*
- * Note: 
+ * Note:
  * ARM math header needs to be included after accelerometer header,
- * since the accelerometer header includes the STM32 drivers which 
+ * since the accelerometer header includes the STM32 drivers which
  * contain information about the MCU which the ARM math library needs.
  */
-// 
+//
 #include "arm_math.h"
 #include "ADC.h"
 #include "serial_monitor.h"
 
+#define ADC_RAW_TO_ACCELERATION(raw) (ADC_RAW_TO_VOLTAGE(raw) - ADC_VOLTAGE_HALF)
 #define NORMALIZED_AMPLITUDE(a, b) (sqrtf(a * a + b * b) / FFT_SIZE_SINGLE)
 #define INDEX_TO_FREQUENCY(i) ((float)i * SAMPLE_RATE_HZ / FFT_SIZE_SINGLE)
 
@@ -71,20 +72,20 @@ void PL_Accelerometer_Analyze(PL_Accelerometer_Handler *accel)
     float32_t voltage_z[FFT_SIZE_SINGLE] = {0};
     for (int i = 0; i < FFT_SIZE_SINGLE; i++)
     {
-        voltage_x[i] = ADC_RAW_TO_VOLTAGE(accel->fft_buffer_x[i]);
-        voltage_y[i] = ADC_RAW_TO_VOLTAGE(accel->fft_buffer_y[i]);
-        voltage_z[i] = ADC_RAW_TO_VOLTAGE(accel->fft_buffer_z[i]);
+        voltage_x[i] = ADC_RAW_TO_ACCELERATION(accel->fft_buffer_x[i]);
+        voltage_y[i] = ADC_RAW_TO_ACCELERATION(accel->fft_buffer_y[i]);
+        voltage_z[i] = ADC_RAW_TO_ACCELERATION(accel->fft_buffer_z[i]);
     }
 
     // Perform FFT and store in output buffers
     float32_t fft_output_x[FFT_SIZE_SINGLE] = {0};
     float32_t fft_output_y[FFT_SIZE_SINGLE] = {0};
     float32_t fft_output_z[FFT_SIZE_SINGLE] = {0};
-    arm_rfft_fast_f32(&accel->fft_handler, voltage_x, (float32_t *)fft_output_x, 0);
-    arm_rfft_fast_f32(&accel->fft_handler, voltage_y, (float32_t *)fft_output_y, 0);
-    arm_rfft_fast_f32(&accel->fft_handler, voltage_z, (float32_t *)fft_output_z, 0);
+    arm_rfft_fast_f32(&accel->fft_handler, voltage_x, fft_output_x, 0);
+    arm_rfft_fast_f32(&accel->fft_handler, voltage_y, fft_output_y, 0);
+    arm_rfft_fast_f32(&accel->fft_handler, voltage_z, fft_output_z, 0);
 
-    /* 
+    /*
      * Calculate ampliutdes of each FFT coefficient based on real and imaginary components of each one
      * The DC and Nyquist frequencies normally need extra analysis (having their amplitudes halved) but
      * since we don't care about those frequencies for detecting the peak, we can ignore that.
@@ -101,9 +102,13 @@ void PL_Accelerometer_Analyze(PL_Accelerometer_Handler *accel)
 
 float PL_Accelerometer_PeakFrequency(float *amplitudes, float *peak_amplitude)
 {
-    // Ignore DC offset and Nyquist frequency by skipping first and last coefficient
-    int peak_index = 1;
-    for (int i = 1; i < FFT_AMPLITUDE_SIZE - 1; i++)
+    /*
+     * We don't ignore the DC frequency.
+     * This is because the hardware DC offset added in hardware is removed in `ADC_RAW_TO_ACCELERATION`.
+     * If the DC frequency is the peak frequency, then something interesting is going on and we should report it.
+     */
+    int peak_index = 0;
+    for (int i = 0; i < FFT_AMPLITUDE_SIZE; i++)
     {
         if (amplitudes[i] > amplitudes[peak_index])
         {
