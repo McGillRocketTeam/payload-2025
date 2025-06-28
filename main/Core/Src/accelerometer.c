@@ -85,12 +85,12 @@ void PL_Accelerometer_Analyze(PL_Accelerometer_Handler *accel)
     arm_rfft_fast_f32(&accel->fft_handler, voltage_y, fft_output_y, 0);
     arm_rfft_fast_f32(&accel->fft_handler, voltage_z, fft_output_z, 0);
 
-    /*
-     * Calculate ampliutdes of each FFT coefficient based on real and imaginary components of each one
-     * The DC and Nyquist frequencies normally need extra analysis (having their amplitudes halved) but
-     * since we don't care about those frequencies for detecting the peak, we can ignore that.
-     */
-    for (int i = 0; i < FFT_SIZE_SINGLE; i += 2)
+    // Calculate DC frequency amplitude
+    accel->amplitudes_x[0] = NORMALIZED_AMPLITUDE(fft_output_x[0], fft_output_x[1]);
+    accel->amplitudes_y[0] = NORMALIZED_AMPLITUDE(fft_output_y[0], fft_output_y[1]);
+    accel->amplitudes_z[0] = NORMALIZED_AMPLITUDE(fft_output_z[0], fft_output_z[1]);
+    // Calculate other amplitudes
+    for (int i = 2; i < FFT_SIZE_SINGLE; i += 2)
     {
         accel->amplitudes_x[i / 2] = 2 * NORMALIZED_AMPLITUDE(fft_output_x[i], fft_output_x[i + 1]);
         accel->amplitudes_y[i / 2] = 2 * NORMALIZED_AMPLITUDE(fft_output_y[i], fft_output_y[i + 1]);
