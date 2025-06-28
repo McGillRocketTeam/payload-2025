@@ -65,7 +65,7 @@ bool PL_Accelerometer_Stop(PL_Accelerometer_Handler *accel);
  * @param accel Pointer to the accelerometer handler structure.
  * @param buffer Pointer to the source buffer of raw triplet data which the ADCs write to.
  */
-void PL_Accelerometer_Record(PL_Accelerometer_Handler *accel, volatile uint16_t *buffer);
+void PL_Accelerometer_Record(PL_Accelerometer_Handler *accel, volatile uint16_t buffer[FFT_SIZE_TRIPLE]);
 /**
  * @brief Performs FFT analysis on all three axes of the recorded accelerometer data. 
  * Populates all three accelerometer amplitude buffers.
