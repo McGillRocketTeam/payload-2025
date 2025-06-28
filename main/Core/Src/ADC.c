@@ -9,6 +9,11 @@
 #include "accelerometer.h"
 #include "enabled.h"
 
+/* 
+ * To get more accurate readings, maybe consider measuring the STM32's internal reference voltage `Vrefint` channel.
+ * Resource: https://community.st.com/t5/stm32-mcus/how-to-use-the-stm32-adc-s-internal-reference-voltage/ta-p/621425
+ */
+
 bool PL_ADC_Init(PL_ADC_Handler *adc, ADC_HandleTypeDef *hadc1, ADC_HandleTypeDef *hadc2, ADC_HandleTypeDef *hadc3, volatile uint16_t *accelerometer_buffer)
 {
     adc->hadc1 = hadc1;
@@ -54,13 +59,10 @@ bool PL_ADC_InjectedConversion(PL_ADC_Handler *adc)
 
 float PL_ADC_GetBatteryVoltage(PL_ADC_Handler *adc)
 {
-    // TODO: Implement the actual voltage calculation based on the ADC value
-    // https://community.st.com/t5/stm32-mcus/how-to-use-the-stm32-adc-s-internal-reference-voltage/ta-p/621425
-    return ADC_RAW_TO_VOLTAGE(adc->vbat_sample);
+    return ADC_RAW_TO_VOLTAGE(adc->vbat_sample) * BATTERY_VOLTAGE_FACTOR;
 }
 
 float PL_ADC_GetCoolerCurrent(PL_ADC_Handler *adc)
 {
-    // TODO: Implement the actual current calculation based on the ADC value
-    return ADC_RAW_TO_VOLTAGE(adc->current_sample);
+    return ADC_RAW_TO_VOLTAGE(adc->current_sample) * COOLER_CURRENT_FACTOR + COOLER_CURRENT_OFFSET;
 }
