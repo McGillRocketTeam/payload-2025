@@ -19,8 +19,8 @@
  */
 
 
-#ifndef INC_BME280_STM32_H_
-#define INC_BME280_STM32_H_
+#ifndef INC_BME280_H_
+#define INC_BME280_H_
 
 #include "stm32f4xx_hal.h"
 
@@ -101,4 +101,4 @@ void BME280_Measure (void);
 #define PRESS_MSB_REG   0xF7
 
 
-#endif /* INC_BME280_STM32_H_ */
+#endif /* INC_BME280_H_ */

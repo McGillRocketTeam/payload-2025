@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2024 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2024 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -24,6 +24,10 @@
 #include "serial_monitor.h"
 #include "ADC.h"
 #include "accelerometer.h"
+#include "CAN_bus.h"
+#include "peltier.h"
+#include "BME280.h"
+#include "blink.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -33,8 +37,12 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define TIM_TEMPERATURE_SAMPLE htim2
+#define TIM_PELTIER_REFERENCE htim3
+#define TIM_PELTIER_PWM htim4
 #define TIM_ADC_SAMPLE htim5
 #define TIM_ACCELEROMETER_SAMPLE htim8
+#define TIM_BLINK htim9
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -52,25 +60,35 @@ CAN_HandleTypeDef hcan1;
 
 I2C_HandleTypeDef hi2c3;
 
+TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
 TIM_HandleTypeDef htim8;
+TIM_HandleTypeDef htim9;
 
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
-PL_ADC_Handler adc;
+/* PL peripheral driver handlers ---------------------------------------------*/ 
 PL_Accelerometer_Handler accelerometer;
+PL_ADC_Handler adc;
+PL_Blink_Handler blink;
+PL_CANBus_Handler can;
+PL_Peltier_Handler peltier;
 
 // Accelerometer buffer which DMA will write to. Needs to be shared a bit, so declared in main.
 volatile uint16_t accelerometer_buffer[ACCELEROMETER_SAMPLE_SIZE_TRIPLE];
 
+/* Global telemetry variables ------------------------------------------------*/
+// BME280 variables
+float temperature, pressure, humidity;
+// ADC variables
 float battery_voltage, cooler_current;
+// FFT variables
 float peak_amp_x, peak_amp_y, peak_amp_z;
 float peak_freq_x, peak_freq_y, peak_freq_z;
-
-volatile uint8_t adc_new_sample;
+volatile uint8_t adc_new_sample, BME280_sample_ready, blink_toggle_ready;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -85,8 +103,10 @@ static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_I2C3_Init(void);
 static void MX_UART4_Init(void);
-static void MX_TIM8_Init(void);
 static void MX_TIM5_Init(void);
+static void MX_TIM9_Init(void);
+static void MX_TIM2_Init(void);
+static void MX_TIM8_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -134,10 +154,53 @@ int main(void)
   MX_TIM4_Init();
   MX_I2C3_Init();
   MX_UART4_Init();
-  MX_TIM8_Init();
   MX_TIM5_Init();
+  MX_TIM9_Init();
+  MX_TIM2_Init();
+  MX_TIM8_Init();
   /* USER CODE BEGIN 2 */
-  printf("Beginning initialization...\r\n");
+  printf("Initializing...\r\n");
+
+  printf("Starting CAN bus...\r\n");
+  if (!PL_CANBus_Init(&can, &hcan1))
+  {
+    printf("CAN bus initialization error.\r\n");
+    Error_Handler();
+  }
+
+  printf("Starting blinking routine...\r\n");
+  PL_Blink_Init(&blink, &htim9, LD1_GPIO_Port, LD1_Pin);
+  if (!PL_Blink_Start(&blink))
+  {
+    printf("Blink start error.\r\n");
+    Error_Handler();
+  }
+  // Initialize blink as ready to turn LED on first time through main loop
+  blink_toggle_ready = 1;
+
+  printf("Configuring BME280...\r\n");
+  if (BME280_Config(OSRS_2, OSRS_16, OSRS_1, MODE_NORMAL, T_SB_0p5, IIR_16) != 0)
+  {
+    printf("BME280 temperature sensor configuration error.\r\n");
+    Error_Handler();
+  }
+  // Start temperature sample timer
+  if (HAL_TIM_Base_Start_IT(&TIM_TEMPERATURE_SAMPLE) != HAL_OK)
+  {
+    printf("Temperature sample timer start error.\r\n");
+    Error_Handler();
+  }
+  // Initialize BME280 sample as ready to sample first time through main loop
+  BME280_sample_ready = 1;
+
+  printf("Initializing Peltier cooler PWM output...\r\n");
+  if (!PL_Peltier_Init(&peltier, &TIM_PELTIER_PWM, &TIM_PELTIER_REFERENCE, TIM_CHANNEL_1, TIM_CHANNEL_1))
+  {
+    printf("Peltier cooler initialization error.\r\n");
+    Error_Handler();
+  }
+  // Start duty cycle at zero
+  PL_Peltier_SetCycle(&peltier, 0.0);
 
   // Initialize ADCs
   if (!PL_ADC_Init(&adc, &hadc1, &hadc2, &hadc3, &TIM_ADC_SAMPLE, accelerometer_buffer))
@@ -162,8 +225,10 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  printf("Beginning main loop.\r\n");
   while (1)
   {
+	  /* Gather data before communication functions --------------------------------*/
     if (accelerometer.analysis_ready)
     {
       // Perform FFT analysis (stored in amplitude buffers)
@@ -184,11 +249,67 @@ int main(void)
       battery_voltage = PL_ADC_GetBatteryVoltage(&adc);
       cooler_current = PL_ADC_GetCoolerCurrent(&adc);
 
-      printf("Injected conversion | battery voltage: %7d mV battery, cooler current: %5d mA\r\n",
+      printf("Injected conversion | battery voltage: %7d mV, cooler current: %5d mA\r\n",
              (int)(1000 * battery_voltage),
              (int)(1000 * cooler_current));
 
       adc_new_sample = 0;
+    }
+
+    if (BME280_sample_ready)
+    {
+      BME280_Measure();
+      printf("BME280 sampled. Temperature: %d C, Pressure: %d Pa, Humidity: %d\r\n", (int) temperature, (int) pressure, (int) (humidity * 100));
+      BME280_sample_ready = 0;
+    }
+
+	  /* Communicate with the outside world and other devices ----------------------*/
+    if (can.command_ready)
+    {
+      struct command com = PL_CANBus_ParseCommand(&can);
+      char *type;
+      int data = 0;
+      switch (com.type)
+      {
+      case RESET_PAYLOAD:
+        type = "RESET_PAYLOAD";
+        break;
+      case TOGGLE_SAMPLING:
+        type = "TOGGLE_SAMPLING";
+        data = com.data.on;
+        break;
+      case TOGGLE_COOLER:
+        type = "TOGGLE_COOLER";
+        data = com.data.on;
+        break;
+      case TOGGLE_LAUNCH_MODE:
+        type = "TOGGLE_LAUNCH_MODE";
+        data = com.data.on;
+        break;
+      case LANDED:
+        type = "LANDED";
+        break;
+      case SET_TEMPERATURE:
+        type = "SET_TEMPERATURE";
+        data = com.data.temp;
+        break;
+      case NONE:
+        type = "NONE";
+        break;
+      case INVALID:
+        type = "INVALID";
+        break;
+      }
+      printf("Command received: %s, Data: %d\r\n", type, data);
+    }
+
+    if (blink_toggle_ready)
+    {
+      if (PL_Blink_Toggle(&blink))
+      {
+        printf("Light blinked. Time: %ld\r\n", HAL_GetTick());
+      }
+      blink_toggle_ready = 0;
     }
     /* USER CODE END WHILE */
 
@@ -219,9 +340,9 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 16;
-  RCC_OscInitStruct.PLL.PLLN = 336;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLN = 72;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 2;
   RCC_OscInitStruct.PLL.PLLR = 2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
@@ -455,11 +576,11 @@ static void MX_CAN1_Init(void)
 
   /* USER CODE END CAN1_Init 1 */
   hcan1.Instance = CAN1;
-  hcan1.Init.Prescaler = 16;
+  hcan1.Init.Prescaler = 20;
   hcan1.Init.Mode = CAN_MODE_NORMAL;
   hcan1.Init.SyncJumpWidth = CAN_SJW_1TQ;
-  hcan1.Init.TimeSeg1 = CAN_BS1_1TQ;
-  hcan1.Init.TimeSeg2 = CAN_BS2_1TQ;
+  hcan1.Init.TimeSeg1 = CAN_BS1_9TQ;
+  hcan1.Init.TimeSeg2 = CAN_BS2_8TQ;
   hcan1.Init.TimeTriggeredMode = DISABLE;
   hcan1.Init.AutoBusOff = DISABLE;
   hcan1.Init.AutoWakeUp = DISABLE;
@@ -511,6 +632,51 @@ static void MX_I2C3_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 7200-1;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 10000-1;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
   * @brief TIM3 Initialization Function
   * @param None
   * @retval None
@@ -529,9 +695,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 0;
+  htim3.Init.Prescaler = 4;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 65535;
+  htim3.Init.Period = 1440;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
@@ -578,9 +744,9 @@ static void MX_TIM4_Init(void)
 
   /* USER CODE END TIM4_Init 1 */
   htim4.Instance = TIM4;
-  htim4.Init.Prescaler = 0;
+  htim4.Init.Prescaler = 4;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 10000;
+  htim4.Init.Period = 1440;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
@@ -627,7 +793,7 @@ static void MX_TIM5_Init(void)
 
   /* USER CODE END TIM5_Init 1 */
   htim5.Instance = TIM5;
-  htim5.Init.Prescaler = 8400-1;
+  htim5.Init.Prescaler = 7200-1;
   htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim5.Init.Period = 5000-1;
   htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -672,7 +838,7 @@ static void MX_TIM8_Init(void)
 
   /* USER CODE END TIM8_Init 1 */
   htim8.Instance = TIM8;
-  htim8.Init.Prescaler = 84-1;
+  htim8.Init.Prescaler = 72-1;
   htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim8.Init.Period = 100-1;
   htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -696,6 +862,44 @@ static void MX_TIM8_Init(void)
   /* USER CODE BEGIN TIM8_Init 2 */
 
   /* USER CODE END TIM8_Init 2 */
+
+}
+
+/**
+  * @brief TIM9 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM9_Init(void)
+{
+
+  /* USER CODE BEGIN TIM9_Init 0 */
+
+  /* USER CODE END TIM9_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+
+  /* USER CODE BEGIN TIM9_Init 1 */
+
+  /* USER CODE END TIM9_Init 1 */
+  htim9.Instance = TIM9;
+  htim9.Init.Prescaler = 7200-1;
+  htim9.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim9.Init.Period = 1000-1;
+  htim9.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim9.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim9) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim9, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM9_Init 2 */
+
+  /* USER CODE END TIM9_Init 2 */
 
 }
 
@@ -826,22 +1030,35 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     PL_ADC_InjectedConversion(&adc);
     adc_new_sample = 1;
   }
+  else if (htim->Instance == TIM_BLINK.Instance)
+  {
+    blink_toggle_ready = 1;
+  }
+  else if (htim->Instance == TIM_TEMPERATURE_SAMPLE.Instance)
+  {
+    BME280_sample_ready = 1;
+  }
 }
 
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 {
-	if (hadc == &hadc1)
-	{
-		PL_Accelerometer_Record(&accelerometer, accelerometer_buffer);
-	}
+  if (hadc == &hadc1)
+  {
+    PL_Accelerometer_Record(&accelerometer, accelerometer_buffer);
+  }
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
-	if (hadc == &hadc1)
-	{
-		PL_Accelerometer_Record(&accelerometer, &accelerometer_buffer[FFT_SIZE_TRIPLE]);
-	}
+  if (hadc == &hadc1)
+  {
+    PL_Accelerometer_Record(&accelerometer, &accelerometer_buffer[FFT_SIZE_TRIPLE]);
+  }
+}
+
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
+{
+  PL_CANBus_Receive(&can);
 }
 /* USER CODE END 4 */
 
