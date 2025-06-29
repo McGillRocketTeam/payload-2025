@@ -33,7 +33,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define TIM_ADC_SAMPLE htim5
+#define TIM_ACCELEROMETER_SAMPLE htim8
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -53,6 +54,7 @@ I2C_HandleTypeDef hi2c3;
 
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
+TIM_HandleTypeDef htim5;
 TIM_HandleTypeDef htim8;
 
 UART_HandleTypeDef huart4;
@@ -64,8 +66,11 @@ PL_Accelerometer_Handler accelerometer;
 // Accelerometer buffer which DMA will write to. Needs to be shared a bit, so declared in main.
 volatile uint16_t accelerometer_buffer[ACCELEROMETER_SAMPLE_SIZE_TRIPLE];
 
+float battery_voltage, cooler_current;
 float peak_amp_x, peak_amp_y, peak_amp_z;
 float peak_freq_x, peak_freq_y, peak_freq_z;
+
+volatile uint8_t adc_new_sample;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -81,6 +86,7 @@ static void MX_TIM4_Init(void);
 static void MX_I2C3_Init(void);
 static void MX_UART4_Init(void);
 static void MX_TIM8_Init(void);
+static void MX_TIM5_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -129,18 +135,19 @@ int main(void)
   MX_I2C3_Init();
   MX_UART4_Init();
   MX_TIM8_Init();
+  MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
   printf("Beginning initialization...\r\n");
 
   // Initialize ADCs
-  if (!PL_ADC_Init(&adc, &hadc1, &hadc2, &hadc3, accelerometer_buffer))
+  if (!PL_ADC_Init(&adc, &hadc1, &hadc2, &hadc3, &TIM_ADC_SAMPLE, accelerometer_buffer))
   {
     printf("ADC initialization error\r\n");
     Error_Handler();
   }
 
   // Initialize accelerometer handler
-  if (!PL_Accelerometer_Init(&accelerometer, &htim8, ACCEL_POWER_GPIO_Port, ACCEL_POWER_Pin))
+  if (!PL_Accelerometer_Init(&accelerometer, &TIM_ACCELEROMETER_SAMPLE, ACCEL_POWER_GPIO_Port, ACCEL_POWER_Pin))
   {
     printf("Accelerometer initialization error.\r\n");
     Error_Handler();
@@ -157,9 +164,6 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    // printf("Time: %ld\r\n", HAL_GetTick());
-    // HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-
     if (accelerometer.analysis_ready)
     {
       // Perform FFT analysis (stored in amplitude buffers)
@@ -169,19 +173,23 @@ int main(void)
       peak_freq_y = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_y, &peak_amp_y);
       peak_freq_z = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_z, &peak_amp_z);
 
-      printf("peak_freq_x: %d amp_x: %d\r\n", (int)peak_freq_x, (int)(1000 * peak_amp_x));
-      printf("peak_freq_y: %d amp_y: %d\r\n", (int)peak_freq_y, (int)(1000 * peak_amp_y));
-      printf("peak_freq_z: %d amp_z: %d\r\n", (int)peak_freq_z, (int)(1000 * peak_amp_z));
+      printf("peak_freq_x: %5d Hz, amp_x: %5d mV\r\n", (int)peak_freq_x, (int)(1000 * peak_amp_x));
+      printf("peak_freq_y: %5d Hz, amp_y: %5d mV\r\n", (int)peak_freq_y, (int)(1000 * peak_amp_y));
+      printf("peak_freq_z: %5d Hz, amp_z: %5d mV\r\n", (int)peak_freq_z, (int)(1000 * peak_amp_z));
     }
 
-    // TODO: Convert injected conversions to be software triggered by a timer interrupt or by a timer trigger output
-    PL_ADC_InjectedConversion(&adc);
+    if (adc_new_sample)
+    {
+      // Calculate values from ADC reading
+      battery_voltage = PL_ADC_GetBatteryVoltage(&adc);
+      cooler_current = PL_ADC_GetCoolerCurrent(&adc);
 
-    printf(
-        "Injected conversion: %d mV battery, %d mA current\r\n",
-        (int)(1000 * PL_ADC_GetBatteryVoltage(&adc)),
-        (int)(1000 * PL_ADC_GetCoolerCurrent(&adc)));
-    HAL_Delay(100);
+      printf("Injected conversion | battery voltage: %7d mV battery, cooler current: %5d mA\r\n",
+             (int)(1000 * battery_voltage),
+             (int)(1000 * cooler_current));
+
+      adc_new_sample = 0;
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -301,8 +309,8 @@ static void MX_ADC1_Init(void)
   sConfigInjected.InjectedRank = 1;
   sConfigInjected.InjectedNbrOfConversion = 1;
   sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_56CYCLES;
-  sConfigInjected.ExternalTrigInjecConvEdge = ADC_EXTERNALTRIGINJECCONVEDGE_NONE;
-  sConfigInjected.ExternalTrigInjecConv = ADC_INJECTED_SOFTWARE_START;
+  sConfigInjected.ExternalTrigInjecConvEdge = ADC_EXTERNALTRIGINJECCONVEDGE_RISINGFALLING;
+  sConfigInjected.ExternalTrigInjecConv = ADC_EXTERNALTRIGINJECCONV_T5_TRGO;
   sConfigInjected.AutoInjectedConv = DISABLE;
   sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
   sConfigInjected.InjectedOffset = 0;
@@ -601,6 +609,51 @@ static void MX_TIM4_Init(void)
 }
 
 /**
+  * @brief TIM5 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM5_Init(void)
+{
+
+  /* USER CODE BEGIN TIM5_Init 0 */
+
+  /* USER CODE END TIM5_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM5_Init 1 */
+
+  /* USER CODE END TIM5_Init 1 */
+  htim5.Instance = TIM5;
+  htim5.Init.Prescaler = 8400-1;
+  htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim5.Init.Period = 5000-1;
+  htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim5, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim5, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM5_Init 2 */
+
+  /* USER CODE END TIM5_Init 2 */
+
+}
+
+/**
   * @brief TIM8 Initialization Function
   * @param None
   * @retval None
@@ -766,6 +819,15 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  if (htim->Instance == TIM_ADC_SAMPLE.Instance)
+  {
+    PL_ADC_InjectedConversion(&adc);
+    adc_new_sample = 1;
+  }
+}
+
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 {
 	if (hadc == &hadc1)
