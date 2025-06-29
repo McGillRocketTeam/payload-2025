@@ -76,6 +76,8 @@ bool ok = 1;
 int num_minor_errors = 0;
 int max_minor_errors = 5;
 int minor_error_blink_time = 3; // seconds
+time_t minor_error_toggle_time = 0;
+bool minor_error_toggle_ready = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -242,6 +244,11 @@ int main(void)
         printf("Light blinked. Time: %ld\r\n", HAL_GetTick());
       }
       blink_toggle_ready = 0;
+    }
+    if (minor_error_toggle_ready && HAL_GetTick() >= minor_error_toggle_time)
+    {
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+      minor_error_toggle_ready = 0; // Reset toggle ready flag
     }
     /* USER CODE END WHILE */
 
@@ -845,12 +852,9 @@ void Minor_Error()
     }
     else if (ok)
     {
-      for (int i = 0; i < minor_error_blink_time*5; i++)
-      {
-        // Blink for x seconds
-        HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-        HAL_Delay(200);
-      }
+      minor_error_toggle_time = HAL_GetTick() + (minor_error_blink_time * 1000);
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+      minor_error_toggle_ready = 1; // Set flag to toggle LD2 off after minor_error_blink_time seconds
     }
     
 }
