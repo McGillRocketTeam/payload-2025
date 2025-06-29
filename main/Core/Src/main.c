@@ -26,6 +26,8 @@
 #include "peltier.h"
 #include "BME280.h"
 #include "blink.h"
+#include "time.h"
+#include "enabled.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -71,6 +73,13 @@ PL_Peltier_Handler peltier;
 float temperature, pressure, humidity;
 // Flags for actions triggered by interrupts
 volatile uint8_t BME280_sample_ready, blink_toggle_ready;
+// Error Handling variables
+bool ok = 1;
+int num_minor_errors = 0;
+int max_minor_errors = 5;
+int minor_error_blink_time = 3; // seconds
+time_t minor_error_toggle_time = 0;
+bool minor_error_toggle_ready = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -103,7 +112,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+  
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -237,6 +246,11 @@ int main(void)
         printf("Light blinked. Time: %ld\r\n", HAL_GetTick());
       }
       blink_toggle_ready = 0;
+    }
+    if (minor_error_toggle_ready && HAL_GetTick() >= minor_error_toggle_time)
+    {
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+      minor_error_toggle_ready = 0; // Reset toggle ready flag
     }
     /* USER CODE END WHILE */
 
@@ -819,6 +833,32 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   {
     blink_toggle_ready = 1;
   }
+}
+
+void Critical_Error()
+{
+  ok = 0;
+  // Turn on LD2 to indicate critical error
+  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+  if (!FINAL_BUILD){
+    Error_Handler();
+  }
+}
+
+void Minor_Error()
+{
+    num_minor_errors++;
+    if (ok && num_minor_errors > max_minor_errors)
+    {
+      Critical_Error();
+    }
+    else if (ok)
+    {
+      minor_error_toggle_time = HAL_GetTick() + (minor_error_blink_time * 1000);
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+      minor_error_toggle_ready = 1; // Set flag to toggle LD2 off after minor_error_blink_time seconds
+    }
+    
 }
 /* USER CODE END 4 */
 
