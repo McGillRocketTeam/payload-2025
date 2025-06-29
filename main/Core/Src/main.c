@@ -26,6 +26,8 @@
 #include "peltier.h"
 #include "BME280.h"
 #include "blink.h"
+#include "time.h"
+#include "enabled.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
