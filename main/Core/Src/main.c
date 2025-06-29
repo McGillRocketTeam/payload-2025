@@ -71,7 +71,7 @@ PL_Peltier_Handler peltier;
 float temperature, pressure, humidity;
 // Flags for actions triggered by interrupts
 volatile uint8_t BME280_sample_ready, blink_toggle_ready;
-// I'm not sure where to put the global variables
+// Error Handling variables
 bool ok = 1;
 int num_minor_errors = 0;
 int max_minor_errors = 5;
@@ -831,7 +831,7 @@ void Critical_Error()
   ok = 0;
   // Turn on LD2 to indicate critical error
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-  if (!final_build){
+  if (!FINAL_BUILD){
     Error_Handler();
   }
 }
@@ -842,7 +842,6 @@ void Minor_Error()
     if (ok && num_minor_errors > max_minor_errors)
     {
       Critical_Error();
-      return;
     }
     else if (ok)
     {
