@@ -71,6 +71,11 @@ PL_Peltier_Handler peltier;
 float temperature, pressure, humidity;
 // Flags for actions triggered by interrupts
 volatile uint8_t BME280_sample_ready, blink_toggle_ready;
+// I'm not sure where to put the global variables
+bool ok = 1;
+int num_minor_errors = 0;
+int max_minor_errors = 5;
+int minor_error_blink_time = 3; // seconds
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -103,7 +108,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+  
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -819,6 +824,36 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   {
     blink_toggle_ready = 1;
   }
+}
+
+void Critical_Error()
+{
+  ok = 0;
+  // Turn on LD2 to indicate critical error
+  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+  if (!final_build){
+    Error_Handler();
+  }
+}
+
+void Minor_Error()
+{
+    num_minor_errors++;
+    if (ok && num_minor_errors > max_minor_errors)
+    {
+      Critical_Error();
+      return;
+    }
+    else if (ok)
+    {
+      for (int i = 0; i < minor_error_blink_time*5; i++)
+      {
+        // Blink for x seconds
+        HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+        HAL_Delay(200);
+      }
+    }
+    
 }
 /* USER CODE END 4 */
 
