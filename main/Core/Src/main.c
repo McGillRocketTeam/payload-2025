@@ -226,7 +226,7 @@ int main(void)
     if (BME280_sample_ready)
     {
       BME280_Measure();
-      printf("BME280 sampled. Temperature: %d C, Pressure: %d Pa, Humidity: %d\r\n", (int) temperature, (int) pressure, (int) (humidity * 100));
+      printf("BME280 sampled. Temperature: %3d C, Pressure: %7d Pa, Humidity: %3d\r\n", (int) temperature, (int) pressure, (int) (humidity * 100));
       BME280_sample_ready = 0;
     }
 
