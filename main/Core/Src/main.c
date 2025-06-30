@@ -167,7 +167,7 @@ int main(void)
   if (!PL_CANBus_Init(&can, &hcan1))
   {
     printf("CAN bus initialization error.\r\n");
-    Error_Handler();
+    Critical_Error();
   }
 
   printf("Starting blinking routine...\r\n");
@@ -175,7 +175,7 @@ int main(void)
   if (!PL_Blink_Start(&blink))
   {
     printf("Blink start error.\r\n");
-    Error_Handler();
+    Critical_Error();
   }
   // Initialize blink as ready to turn LED on first time through main loop
   blink_toggle_ready = 1;
@@ -184,13 +184,13 @@ int main(void)
   if (BME280_Config(OSRS_2, OSRS_16, OSRS_1, MODE_NORMAL, T_SB_0p5, IIR_16) != 0)
   {
     printf("BME280 temperature sensor configuration error.\r\n");
-    Error_Handler();
+    Critical_Error();
   }
   // Start temperature sample timer
   if (HAL_TIM_Base_Start_IT(&TIM_TEMPERATURE_SAMPLE) != HAL_OK)
   {
     printf("Temperature sample timer start error.\r\n");
-    Error_Handler();
+    Critical_Error();
   }
   // Initialize BME280 sample as ready to sample first time through main loop
   BME280_sample_ready = 1;
@@ -199,7 +199,7 @@ int main(void)
   if (!PL_Peltier_Init(&peltier, &TIM_PELTIER_PWM, &TIM_PELTIER_REFERENCE, TIM_CHANNEL_1, TIM_CHANNEL_1))
   {
     printf("Peltier cooler initialization error.\r\n");
-    Error_Handler();
+    Critical_Error();
   }
   // Start duty cycle at zero
   PL_Peltier_SetCycle(&peltier, 0.0);
@@ -246,7 +246,16 @@ int main(void)
         type = "INVALID";
         break;
       }
-      printf("Command received: %s, Data: %d\r\n", type, data);
+
+      if (com.type == INVALID)
+      {
+        printf("CAN bus command parsing error.");
+        Minor_Error();
+      }
+      else
+      {
+        printf("Command received: %s, Data: %d\r\n", type, data);
+      }
     }
 
     if (BME280_sample_ready)
@@ -838,7 +847,11 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
 {
-  PL_CANBus_Receive(&can);
+  if (!PL_CANBus_Receive(&can))
+  {
+    printf("Can bus receive error.");
+    Minor_Error();
+  }
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
