@@ -23,6 +23,8 @@
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
 #include "serial_monitor.h"
+#include "ADC.h"
+#include "accelerometer.h"
 #include "CAN_bus.h"
 #include "peltier.h"
 #include "BME280.h"
@@ -41,6 +43,8 @@
 #define TIM_TEMPERATURE_SAMPLE htim2
 #define TIM_PELTIER_REFERENCE htim3
 #define TIM_PELTIER_PWM htim4
+#define TIM_ADC_SAMPLE htim5
+#define TIM_ACCELEROMETER_SAMPLE htim8
 #define TIM_BLINK htim9
 /* USER CODE END PD */
 
@@ -54,6 +58,7 @@
 ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
 ADC_HandleTypeDef hadc3;
+DMA_HandleTypeDef hdma_adc1;
 
 CAN_HandleTypeDef hcan1;
 
@@ -62,28 +67,42 @@ I2C_HandleTypeDef hi2c3;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
+TIM_HandleTypeDef htim5;
+TIM_HandleTypeDef htim8;
 TIM_HandleTypeDef htim9;
 
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
-// PL peripheral driver handlers
+/* PL peripheral driver handlers ---------------------------------------------*/ 
+PL_Accelerometer_Handler accelerometer;
+PL_ADC_Handler adc;
 PL_Blink_Handler blink;
 PL_CANBus_Handler can;
 PL_Peltier_Handler peltier;
+
+// Accelerometer buffer which DMA will write to. Needs to be shared a bit, so declared in main.
+volatile uint16_t accelerometer_buffer[ACCELEROMETER_SAMPLE_SIZE_TRIPLE];
+
+/* Global telemetry variables ------------------------------------------------*/
 // BME280 variables
 float temperature, pressure, humidity;
 // Error Handling variables
 bool ok;
 uint8_t minor_errors;
 uint32_t minor_error_last_time;
-// Flags for actions triggered by interrupts
-volatile bool BME280_sample_ready, blink_toggle_ready, minor_error_blink_toggle_ready;
+// ADC variables
+float battery_voltage, cooler_current;
+// FFT variables
+float peak_amp_x, peak_amp_y, peak_amp_z;
+float peak_freq_x, peak_freq_y, peak_freq_z;
+volatile bool adc_new_sample_ready, BME280_sample_ready, blink_toggle_ready, minor_error_blink_toggle_ready;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_ADC3_Init(void);
@@ -92,8 +111,10 @@ static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_I2C3_Init(void);
 static void MX_UART4_Init(void);
-static void MX_TIM2_Init(void);
+static void MX_TIM5_Init(void);
 static void MX_TIM9_Init(void);
+static void MX_TIM2_Init(void);
+static void MX_TIM8_Init(void);
 /* USER CODE BEGIN PFP */
 /**
  * @brief Signals a critical error. Flags Payload as not ok, permanently turns on LD2. 
@@ -144,6 +165,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_ADC1_Init();
   MX_ADC2_Init();
   MX_ADC3_Init();
@@ -152,8 +174,10 @@ int main(void)
   MX_TIM4_Init();
   MX_I2C3_Init();
   MX_UART4_Init();
-  MX_TIM2_Init();
+  MX_TIM5_Init();
   MX_TIM9_Init();
+  MX_TIM2_Init();
+  MX_TIM8_Init();
   /* USER CODE BEGIN 2 */
   printf("Initializing...\r\n");
 
@@ -171,7 +195,7 @@ int main(void)
   }
 
   printf("Starting blinking routine...\r\n");
-  PL_Blink_Init(&blink, &htim9, LD1_GPIO_Port, LD1_Pin);
+  PL_Blink_Init(&blink, &TIM_BLINK, LD1_GPIO_Port, LD1_Pin);
   if (!PL_Blink_Start(&blink))
   {
     printf("Blink start error.\r\n");
@@ -203,6 +227,26 @@ int main(void)
   }
   // Start duty cycle at zero
   PL_Peltier_SetCycle(&peltier, 0.0);
+
+  // Initialize ADCs
+  if (!PL_ADC_Init(&adc, &hadc1, &hadc2, &hadc3, &TIM_ADC_SAMPLE, accelerometer_buffer))
+  {
+    printf("ADC initialization error\r\n");
+    Error_Handler();
+  }
+
+  // Initialize accelerometer handler
+  if (!PL_Accelerometer_Init(&accelerometer, &TIM_ACCELEROMETER_SAMPLE, ACCEL_POWER_GPIO_Port, ACCEL_POWER_Pin))
+  {
+    printf("Accelerometer initialization error.\r\n");
+    Error_Handler();
+  }
+  // Start the accelerometer
+  if (!PL_Accelerometer_Start(&accelerometer))
+  {
+    printf("Accelerometer start error.\r\n");
+    Error_Handler();
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -210,6 +254,42 @@ int main(void)
   printf("Beginning main loop.\r\n");
   while (1)
   {
+	  /* Gather data before communication functions --------------------------------*/
+    if (accelerometer.analysis_ready)
+    {
+      // Perform FFT analysis (stored in amplitude buffers)
+      PL_Accelerometer_Analyze(&accelerometer);
+      // Find peak amplitudes and frequencies on each axis
+      peak_freq_x = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_x, &peak_amp_x);
+      peak_freq_y = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_y, &peak_amp_y);
+      peak_freq_z = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_z, &peak_amp_z);
+
+      printf("peak_freq_x: %5d Hz, amp_x: %5d mV\r\n", (int)peak_freq_x, (int)(1000 * peak_amp_x));
+      printf("peak_freq_y: %5d Hz, amp_y: %5d mV\r\n", (int)peak_freq_y, (int)(1000 * peak_amp_y));
+      printf("peak_freq_z: %5d Hz, amp_z: %5d mV\r\n", (int)peak_freq_z, (int)(1000 * peak_amp_z));
+    }
+
+    if (adc_new_sample_ready)
+    {
+      // Calculate values from ADC reading
+      battery_voltage = PL_ADC_GetBatteryVoltage(&adc);
+      cooler_current = PL_ADC_GetCoolerCurrent(&adc);
+
+      printf("Injected conversion | battery voltage: %7d mV, cooler current: %5d mA\r\n",
+             (int)(1000 * battery_voltage),
+             (int)(1000 * cooler_current));
+
+      adc_new_sample_ready = 0;
+    }
+
+    if (BME280_sample_ready)
+    {
+      BME280_Measure();
+      printf("BME280 sampled. Temperature: %3d C, Pressure: %7d Pa, Humidity: %3d %%\r\n", (int) temperature, (int) pressure, (int) humidity);
+      BME280_sample_ready = 0;
+    }
+
+	  /* Communicate with the outside world and other devices ----------------------*/
     if (can.command_ready)
     {
       struct command com = PL_CANBus_ParseCommand(&can);
@@ -246,23 +326,7 @@ int main(void)
         type = "INVALID";
         break;
       }
-
-      if (com.type == INVALID)
-      {
-        printf("CAN bus command parsing error.");
-        Minor_Error();
-      }
-      else
-      {
-        printf("Command received: %s, Data: %d\r\n", type, data);
-      }
-    }
-
-    if (BME280_sample_ready)
-    {
-      BME280_Measure();
-      printf("BME280 sampled. Temperature: %d C, Pressure: %d Pa, Humidity: %d\r\n", (int) temperature, (int) pressure, (int) (humidity * 100));
-      BME280_sample_ready = 0;
+      printf("Command received: %s, Data: %d\r\n", type, data);
     }
 
     if (blink_toggle_ready)
@@ -345,7 +409,9 @@ static void MX_ADC1_Init(void)
 
   /* USER CODE END ADC1_Init 0 */
 
+  ADC_MultiModeTypeDef multimode = {0};
   ADC_ChannelConfTypeDef sConfig = {0};
+  ADC_InjectionConfTypeDef sConfigInjected = {0};
 
   /* USER CODE BEGIN ADC1_Init 1 */
 
@@ -359,23 +425,49 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ScanConvMode = DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISINGFALLING;
+  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T8_TRGO;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
     Error_Handler();
   }
 
+  /** Configure the ADC multi-mode
+  */
+  multimode.Mode = ADC_TRIPLEMODE_REGSIMULT_INJECSIMULT;
+  multimode.DMAAccessMode = ADC_DMAACCESSMODE_1;
+  multimode.TwoSamplingDelay = ADC_TWOSAMPLINGDELAY_5CYCLES;
+  if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
-  sConfig.Channel = ADC_CHANNEL_2;
+  sConfig.Channel = ADC_CHANNEL_11;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_56CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
+  */
+  sConfigInjected.InjectedChannel = ADC_CHANNEL_2;
+  sConfigInjected.InjectedRank = 1;
+  sConfigInjected.InjectedNbrOfConversion = 1;
+  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_56CYCLES;
+  sConfigInjected.ExternalTrigInjecConvEdge = ADC_EXTERNALTRIGINJECCONVEDGE_RISINGFALLING;
+  sConfigInjected.ExternalTrigInjecConv = ADC_EXTERNALTRIGINJECCONV_T5_TRGO;
+  sConfigInjected.AutoInjectedConv = DISABLE;
+  sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
+  sConfigInjected.InjectedOffset = 0;
+  if (HAL_ADCEx_InjectedConfigChannel(&hadc1, &sConfigInjected) != HAL_OK)
   {
     Error_Handler();
   }
@@ -398,6 +490,7 @@ static void MX_ADC2_Init(void)
   /* USER CODE END ADC2_Init 0 */
 
   ADC_ChannelConfTypeDef sConfig = {0};
+  ADC_InjectionConfTypeDef sConfigInjected = {0};
 
   /* USER CODE BEGIN ADC2_Init 1 */
 
@@ -408,11 +501,9 @@ static void MX_ADC2_Init(void)
   hadc2.Instance = ADC2;
   hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc2.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc2.Init.ScanConvMode = DISABLE;
+  hadc2.Init.ScanConvMode = ENABLE;
   hadc2.Init.ContinuousConvMode = DISABLE;
   hadc2.Init.DiscontinuousConvMode = DISABLE;
-  hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc2.Init.NbrOfConversion = 1;
   hadc2.Init.DMAContinuousRequests = DISABLE;
@@ -424,10 +515,24 @@ static void MX_ADC2_Init(void)
 
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
-  sConfig.Channel = ADC_CHANNEL_9;
+  sConfig.Channel = ADC_CHANNEL_12;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_56CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
+  */
+  sConfigInjected.InjectedChannel = ADC_CHANNEL_9;
+  sConfigInjected.InjectedRank = 1;
+  sConfigInjected.InjectedNbrOfConversion = 1;
+  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_56CYCLES;
+  sConfigInjected.AutoInjectedConv = ENABLE;
+  sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
+  sConfigInjected.InjectedOffset = 0;
+  if (HAL_ADCEx_InjectedConfigChannel(&hadc2, &sConfigInjected) != HAL_OK)
   {
     Error_Handler();
   }
@@ -463,8 +568,6 @@ static void MX_ADC3_Init(void)
   hadc3.Init.ScanConvMode = DISABLE;
   hadc3.Init.ContinuousConvMode = DISABLE;
   hadc3.Init.DiscontinuousConvMode = DISABLE;
-  hadc3.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc3.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc3.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc3.Init.NbrOfConversion = 1;
   hadc3.Init.DMAContinuousRequests = DISABLE;
@@ -478,7 +581,7 @@ static void MX_ADC3_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_13;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_56CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc3, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -704,6 +807,97 @@ static void MX_TIM4_Init(void)
 }
 
 /**
+  * @brief TIM5 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM5_Init(void)
+{
+
+  /* USER CODE BEGIN TIM5_Init 0 */
+
+  /* USER CODE END TIM5_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM5_Init 1 */
+
+  /* USER CODE END TIM5_Init 1 */
+  htim5.Instance = TIM5;
+  htim5.Init.Prescaler = 7200-1;
+  htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim5.Init.Period = 5000-1;
+  htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim5, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim5, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM5_Init 2 */
+
+  /* USER CODE END TIM5_Init 2 */
+
+}
+
+/**
+  * @brief TIM8 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM8_Init(void)
+{
+
+  /* USER CODE BEGIN TIM8_Init 0 */
+
+  /* USER CODE END TIM8_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM8_Init 1 */
+
+  /* USER CODE END TIM8_Init 1 */
+  htim8.Instance = TIM8;
+  htim8.Init.Prescaler = 72-1;
+  htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim8.Init.Period = 100-1;
+  htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim8.Init.RepetitionCounter = 0;
+  htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim8, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim8, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM8_Init 2 */
+
+  /* USER CODE END TIM8_Init 2 */
+
+}
+
+/**
   * @brief TIM9 Initialization Function
   * @param None
   * @retval None
@@ -771,6 +965,22 @@ static void MX_UART4_Init(void)
   /* USER CODE BEGIN UART4_Init 2 */
 
   /* USER CODE END UART4_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA2_Stream0_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
 
 }
 
@@ -856,13 +1066,34 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  if (htim->Instance == TIM_TEMPERATURE_SAMPLE.Instance)
+  if (htim->Instance == TIM_ADC_SAMPLE.Instance)
   {
-    BME280_sample_ready = 1;
+    PL_ADC_InjectedConversion(&adc);
+    adc_new_sample_ready = 1;
   }
   else if (htim->Instance == TIM_BLINK.Instance)
   {
     blink_toggle_ready = 1;
+  }
+  else if (htim->Instance == TIM_TEMPERATURE_SAMPLE.Instance)
+  {
+    BME280_sample_ready = 1;
+  }
+}
+
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
+{
+  if (hadc == &hadc1)
+  {
+    PL_Accelerometer_Record(&accelerometer, accelerometer_buffer);
+  }
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+  if (hadc == &hadc1)
+  {
+    PL_Accelerometer_Record(&accelerometer, &accelerometer_buffer[FFT_SIZE_TRIPLE]);
   }
 }
 
