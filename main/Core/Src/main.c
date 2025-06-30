@@ -145,7 +145,7 @@ int main(void)
   }
 
   printf("Starting blinking routine...\r\n");
-  PL_Blink_Init(&blink, &htim9, LD1_GPIO_Port, LD1_Pin);
+  PL_Blink_Init(&blink, &TIM_BLINK, LD1_GPIO_Port, LD1_Pin);
   if (!PL_Blink_Start(&blink))
   {
     printf("Blink start error.\r\n");
