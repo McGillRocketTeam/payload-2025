@@ -169,7 +169,7 @@ int main(void)
   }
 
   printf("Starting blinking routine...\r\n");
-  PL_Blink_Init(&blink, &htim9, LD1_GPIO_Port, LD1_Pin);
+  PL_Blink_Init(&blink, &TIM_BLINK, LD1_GPIO_Port, LD1_Pin);
   if (!PL_Blink_Start(&blink))
   {
     printf("Blink start error.\r\n");
@@ -259,7 +259,7 @@ int main(void)
     if (BME280_sample_ready)
     {
       BME280_Measure();
-      printf("BME280 sampled. Temperature: %d C, Pressure: %d Pa, Humidity: %d\r\n", (int) temperature, (int) pressure, (int) (humidity * 100));
+      printf("BME280 sampled. Temperature: %3d C, Pressure: %7d Pa, Humidity: %3d %%\r\n", (int) temperature, (int) pressure, (int) humidity);
       BME280_sample_ready = 0;
     }
 
