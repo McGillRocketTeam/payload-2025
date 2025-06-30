@@ -95,7 +95,18 @@ static void MX_UART4_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM9_Init(void);
 /* USER CODE BEGIN PFP */
+/**
+ * @brief Signals a critical error. Flags Payload as not ok, permanently turns on LD2. 
+ * Call `Error_Handler` if not in final build.
+ * @note Critical errors occur if peripheral initialization fails, or in other similar instances.
+ */
 void Critical_Error();
+/**
+ * @brief Signals a minor error. Briefly blinks LD2. Keeps track of number of minor errors, 
+ * and triggers `Critical_Error` if it exceeds `MINOR_ERRORS_MAX`.
+ * @note Critical errors occur on single failures 
+ * (i.e. one failed CAN message send or one failed peripheral sample).
+ */
 void Minor_Error();
 /* USER CODE END PFP */
 
