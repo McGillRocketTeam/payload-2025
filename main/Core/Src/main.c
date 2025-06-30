@@ -97,7 +97,7 @@ static void MX_TIM9_Init(void);
 /* USER CODE BEGIN PFP */
 /**
  * @brief Signals a critical error. Flags Payload as not ok, permanently turns on LD2. 
- * Call `Error_Handler` if not in final build.
+ * Calls `Error_Handler` if not in final build.
  * @note Critical errors occur if peripheral initialization fails, or in other similar instances.
  */
 void Critical_Error();
@@ -871,7 +871,7 @@ void Critical_Error()
   ok = 0;
   // Turn on LD2 to indicate critical error
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-#if FINAL_BUILD
+#if !FINAL_BUILD
   Error_Handler();
 #endif
 }
