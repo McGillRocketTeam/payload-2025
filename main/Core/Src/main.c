@@ -21,6 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdbool.h>
 #include "serial_monitor.h"
 #include "CAN_bus.h"
 #include "peltier.h"
@@ -45,7 +46,8 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+#define MINOR_ERRORS_MAX 64
+#define MINOR_ERROR_BLINK_TIME 10 // milliseconds
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -71,15 +73,12 @@ PL_CANBus_Handler can;
 PL_Peltier_Handler peltier;
 // BME280 variables
 float temperature, pressure, humidity;
-// Flags for actions triggered by interrupts
-volatile uint8_t BME280_sample_ready, blink_toggle_ready;
 // Error Handling variables
-bool ok = 1;
-int num_minor_errors = 0;
-int max_minor_errors = 5;
-int minor_error_blink_time = 3; // seconds
-time_t minor_error_toggle_time = 0;
-bool minor_error_toggle_ready = 0;
+bool ok;
+uint8_t minor_errors;
+uint32_t minor_error_last_time;
+// Flags for actions triggered by interrupts
+volatile bool BME280_sample_ready, blink_toggle_ready, minor_error_blink_toggle_ready;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -96,7 +95,8 @@ static void MX_UART4_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM9_Init(void);
 /* USER CODE BEGIN PFP */
-
+void Critical_Error();
+void Minor_Error();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -145,6 +145,12 @@ int main(void)
   MX_TIM9_Init();
   /* USER CODE BEGIN 2 */
   printf("Initializing...\r\n");
+
+  // Initialize error handling variables
+  ok = 1;
+  minor_errors = 0;
+  minor_error_last_time = 0;
+  minor_error_blink_toggle_ready = 0;
 
   printf("Starting CAN bus...\r\n");
   if (!PL_CANBus_Init(&can, &hcan1))
@@ -247,10 +253,11 @@ int main(void)
       }
       blink_toggle_ready = 0;
     }
-    if (minor_error_toggle_ready && HAL_GetTick() >= minor_error_toggle_time)
+
+    if (minor_error_blink_toggle_ready && HAL_GetTick() >= MINOR_ERROR_BLINK_TIME)
     {
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-      minor_error_toggle_ready = 0; // Reset toggle ready flag
+      minor_error_blink_toggle_ready = 0; // Reset blink ready flag
     }
     /* USER CODE END WHILE */
 
@@ -840,25 +847,27 @@ void Critical_Error()
   ok = 0;
   // Turn on LD2 to indicate critical error
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-  if (!FINAL_BUILD){
-    Error_Handler();
-  }
+#if FINAL_BUILD
+  Error_Handler();
+#endif
 }
 
 void Minor_Error()
 {
-    num_minor_errors++;
-    if (ok && num_minor_errors > max_minor_errors)
+  if (ok)
+  {
+    minor_errors++;
+    if (minor_errors > MINOR_ERRORS_MAX)
     {
       Critical_Error();
     }
-    else if (ok)
+    else
     {
-      minor_error_toggle_time = HAL_GetTick() + (minor_error_blink_time * 1000);
+      minor_error_last_time = HAL_GetTick();
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-      minor_error_toggle_ready = 1; // Set flag to toggle LD2 off after minor_error_blink_time seconds
+      minor_error_blink_toggle_ready = 1; // Set flag to toggle LD2 off after `MINOR_ERROR_BLINK_TIME`
     }
-    
+  }
 }
 /* USER CODE END 4 */
 
