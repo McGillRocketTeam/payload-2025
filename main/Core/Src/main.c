@@ -273,12 +273,13 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   printf("Beginning main loop.\r\n");
 
-  if (!PL_SDCard_WriteTelemetry(&sd_card, 0, 1, 0xFFFFl, 0, 0, 1, 2, 3, 4))
+  uint32_t time = HAL_GetTick();
+  if (!PL_SDCard_WriteTelemetry(&sd_card, 0xFAFBFCFD, 1, 1, 1, 7, 1, 2, 3, 4))
   {
     printf("telemetry error\r\n");
-    Error_Handler();
+    Critical_Error();
   }
-  printf("Wrote telemetry packet\r\n");
+  printf("Wrote telemetry packet at time %ld, took %ld\r\n", time, HAL_GetTick() - time);
 
   uint16_t x_buf[FFT_SIZE_SINGLE];
   uint16_t y_buf[FFT_SIZE_SINGLE];
@@ -287,23 +288,22 @@ int main(void)
   for (int i=0; i<FFT_SIZE_SINGLE; i++)
   {
     x_buf[i]=i;
-    y_buf[i]=i+1;
-    z_buf[i]=i+2;
+    y_buf[i]=i;
+    z_buf[i]=i;
   }
 
-  if (!PL_SDCard_WriteAccelerometer(&sd_card, HAL_GetTick(), x_buf, y_buf, z_buf))
+  time = HAL_GetTick();
+  if (!PL_SDCard_WriteAccelerometer(&sd_card, 0xFAFBFCFD, x_buf, y_buf, z_buf))
   {
     printf("accelerometer error\r\n");
-    Error_Handler();
+    Critical_Error();
   }
-  printf("Wrote accelerometer packet\r\n");
-
-  f_sync(&sd_card.file);
+  printf("Wrote accelerometer packet at time %ld, took %ld\r\n", time, HAL_GetTick() - time);
 
   if (!PL_SDCard_Close(&sd_card))
   {
     printf("closing error\r\n");
-    Error_Handler();
+    Critical_Error();
   }
   while (1)
   {
