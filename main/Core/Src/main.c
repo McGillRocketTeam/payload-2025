@@ -21,6 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdbool.h>
 #include "serial_monitor.h"
 #include "ADC.h"
 #include "accelerometer.h"
@@ -28,6 +29,7 @@
 #include "peltier.h"
 #include "BME280.h"
 #include "blink.h"
+#include "enabled.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,7 +49,8 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+#define MINOR_ERRORS_MAX 128
+#define MINOR_ERROR_BLINK_TIME 100 // milliseconds
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -83,12 +86,16 @@ volatile uint16_t accelerometer_buffer[ACCELEROMETER_SAMPLE_SIZE_TRIPLE];
 /* Global telemetry variables ------------------------------------------------*/
 // BME280 variables
 float temperature, pressure, humidity;
+// Error Handling variables
+bool ok;
+uint8_t minor_errors;
+uint32_t minor_error_last_time;
 // ADC variables
 float battery_voltage, cooler_current;
 // FFT variables
 float peak_amp_x, peak_amp_y, peak_amp_z;
 float peak_freq_x, peak_freq_y, peak_freq_z;
-volatile uint8_t adc_new_sample, BME280_sample_ready, blink_toggle_ready;
+volatile bool adc_new_sample_ready, BME280_sample_ready, blink_toggle_ready, minor_error_blink_toggle_ready;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -108,7 +115,19 @@ static void MX_TIM9_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM8_Init(void);
 /* USER CODE BEGIN PFP */
-
+/**
+ * @brief Signals a critical error. Flags Payload as not ok, permanently turns on LD2. 
+ * Calls `Error_Handler` if not in final build.
+ * @note Critical errors occur if peripheral initialization fails, or in other similar instances.
+ */
+void Critical_Error();
+/**
+ * @brief Signals a minor error. Briefly blinks LD2. Keeps track of number of minor errors, 
+ * and triggers `Critical_Error` if it exceeds `MINOR_ERRORS_MAX`.
+ * @note Critical errors occur on single failures 
+ * (i.e. one failed CAN message send or one failed peripheral sample).
+ */
+void Minor_Error();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -124,7 +143,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+  
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -161,11 +180,17 @@ int main(void)
   /* USER CODE BEGIN 2 */
   printf("Initializing...\r\n");
 
+  // Initialize error handling variables
+  ok = 1;
+  minor_errors = 0;
+  minor_error_last_time = 0;
+  minor_error_blink_toggle_ready = 0;
+
   printf("Starting CAN bus...\r\n");
   if (!PL_CANBus_Init(&can, &hcan1))
   {
     printf("CAN bus initialization error.\r\n");
-    Error_Handler();
+    Critical_Error();
   }
 
   printf("Starting blinking routine...\r\n");
@@ -173,7 +198,7 @@ int main(void)
   if (!PL_Blink_Start(&blink))
   {
     printf("Blink start error.\r\n");
-    Error_Handler();
+    Critical_Error();
   }
   // Initialize blink as ready to turn LED on first time through main loop
   blink_toggle_ready = 1;
@@ -182,13 +207,13 @@ int main(void)
   if (BME280_Config(OSRS_2, OSRS_16, OSRS_1, MODE_NORMAL, T_SB_0p5, IIR_16) != 0)
   {
     printf("BME280 temperature sensor configuration error.\r\n");
-    Error_Handler();
+    Critical_Error();
   }
   // Start temperature sample timer
   if (HAL_TIM_Base_Start_IT(&TIM_TEMPERATURE_SAMPLE) != HAL_OK)
   {
     printf("Temperature sample timer start error.\r\n");
-    Error_Handler();
+    Critical_Error();
   }
   // Initialize BME280 sample as ready to sample first time through main loop
   BME280_sample_ready = 1;
@@ -197,7 +222,7 @@ int main(void)
   if (!PL_Peltier_Init(&peltier, &TIM_PELTIER_PWM, &TIM_PELTIER_REFERENCE, TIM_CHANNEL_1, TIM_CHANNEL_1))
   {
     printf("Peltier cooler initialization error.\r\n");
-    Error_Handler();
+    Critical_Error();
   }
   // Start duty cycle at zero
   PL_Peltier_SetCycle(&peltier, 0.0);
@@ -243,7 +268,7 @@ int main(void)
       printf("peak_freq_z: %5d Hz, amp_z: %5d mV\r\n", (int)peak_freq_z, (int)(1000 * peak_amp_z));
     }
 
-    if (adc_new_sample)
+    if (adc_new_sample_ready)
     {
       // Calculate values from ADC reading
       battery_voltage = PL_ADC_GetBatteryVoltage(&adc);
@@ -253,7 +278,7 @@ int main(void)
              (int)(1000 * battery_voltage),
              (int)(1000 * cooler_current));
 
-      adc_new_sample = 0;
+      adc_new_sample_ready = 0;
     }
 
     if (BME280_sample_ready)
@@ -310,6 +335,12 @@ int main(void)
         printf("Light blinked. Time: %ld\r\n", HAL_GetTick());
       }
       blink_toggle_ready = 0;
+    }
+
+    if (minor_error_blink_toggle_ready && HAL_GetTick() - minor_error_last_time >= MINOR_ERROR_BLINK_TIME)
+    {
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+      minor_error_blink_toggle_ready = 0; // Reset blink ready flag
     }
     /* USER CODE END WHILE */
 
@@ -1023,12 +1054,21 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
+{
+  if (!PL_CANBus_Receive(&can))
+  {
+    printf("Can bus receive error.");
+    Minor_Error();
+  }
+}
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM_ADC_SAMPLE.Instance)
   {
     PL_ADC_InjectedConversion(&adc);
-    adc_new_sample = 1;
+    adc_new_sample_ready = 1;
   }
   else if (htim->Instance == TIM_BLINK.Instance)
   {
@@ -1056,9 +1096,34 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
   }
 }
 
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
+void Critical_Error()
 {
-  PL_CANBus_Receive(&can);
+  ok = 0;
+  // Turn on LD2 to indicate critical error
+  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+  printf("A critical error occurred.\r\n");
+#if !FINAL_BUILD
+  Error_Handler();
+#endif
+}
+
+void Minor_Error()
+{
+  if (ok)
+  {
+    minor_errors++;
+    if (minor_errors >= MINOR_ERRORS_MAX)
+    {
+      printf("Minor error excess.\r\n");
+      Critical_Error();
+    }
+    else
+    {
+      minor_error_last_time = HAL_GetTick();
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+      minor_error_blink_toggle_ready = 1; // Set flag to toggle LD2 off after `MINOR_ERROR_BLINK_TIME`
+    }
+  }
 }
 /* USER CODE END 4 */
 
