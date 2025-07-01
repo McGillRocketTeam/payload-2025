@@ -100,6 +100,9 @@ float battery_voltage, cooler_current;
 // FFT variables
 float peak_amp_x, peak_amp_y, peak_amp_z;
 float peak_freq_x, peak_freq_y, peak_freq_z;
+// Others
+float target_temperature;
+
 // Flags for actions triggered by interrupts
 volatile bool adc_new_sample_ready, BME280_sample_ready, blink_toggle_ready, minor_error_blink_toggle_ready;
 /* USER CODE END PV */
@@ -272,44 +275,24 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   printf("Beginning main loop.\r\n");
-
-  uint32_t time = HAL_GetTick();
-  if (!PL_SDCard_WriteTelemetry(&sd_card, 0xFAFBFCFD, 1, 1, 1, 7, 1, 2, 3, 4))
-  {
-    printf("telemetry error\r\n");
-    Critical_Error();
-  }
-  printf("Wrote telemetry packet at time %ld, took %ld\r\n", time, HAL_GetTick() - time);
-
-  uint16_t x_buf[FFT_SIZE_SINGLE];
-  uint16_t y_buf[FFT_SIZE_SINGLE];
-  uint16_t z_buf[FFT_SIZE_SINGLE];
-
-  for (int i=0; i<FFT_SIZE_SINGLE; i++)
-  {
-    x_buf[i]=i;
-    y_buf[i]=i;
-    z_buf[i]=i;
-  }
-
-  time = HAL_GetTick();
-  if (!PL_SDCard_WriteAccelerometer(&sd_card, 0xFAFBFCFD, x_buf, y_buf, z_buf))
-  {
-    printf("accelerometer error\r\n");
-    Critical_Error();
-  }
-  printf("Wrote accelerometer packet at time %ld, took %ld\r\n", time, HAL_GetTick() - time);
-
-  if (!PL_SDCard_Close(&sd_card))
-  {
-    printf("closing error\r\n");
-    Critical_Error();
-  }
   while (1)
   {
 	  /* Gather data before communication functions --------------------------------*/
     if (accelerometer.analysis_ready)
     {
+      // Write new accelerometer data to the SD card
+      uint32_t time = HAL_GetTick();
+      if (!PL_SDCard_WriteAccelerometer(&sd_card,
+                                        HAL_GetTick(),
+                                        (uint16_t *)accelerometer.fft_buffer_x,
+                                        (uint16_t *)accelerometer.fft_buffer_y,
+                                        (uint16_t *)accelerometer.fft_buffer_z))
+      {
+        printf("Accelerometer packet SD card write error.\r\n");
+        Minor_Error();
+      }
+      printf("Wrote accelerometer packet, took %ld, bytes written %d\r\n", HAL_GetTick() - time, sd_card.bytes_written);
+
       // Perform FFT analysis (stored in amplitude buffers)
       PL_Accelerometer_Analyze(&accelerometer);
       // Find peak amplitudes and frequencies on each axis
@@ -333,6 +316,23 @@ int main(void)
              (int)(1000 * cooler_current));
 
       adc_new_sample_ready = 0;
+
+      uint32_t time = HAL_GetTick();
+      if (!PL_SDCard_WriteTelemetry(&sd_card,
+                                    HAL_GetTick(),
+                                    ok,
+                                    true,
+                                    true,
+                                    target_temperature,
+                                    temperature,
+                                    pressure,
+                                    humidity,
+                                    battery_voltage))
+      {
+        printf("Telemetry packet SD card write error.\r\n");
+        Critical_Error();
+      }
+      printf("Wrote telemetry packet, took %ld, bytes written %d\r\n", HAL_GetTick() - time, sd_card.bytes_written);
     }
 
     if (BME280_sample_ready)

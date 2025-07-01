@@ -19,10 +19,13 @@
 #define SD_FILE_BASE_NAME "data"
 // Stands for PayLoad Data
 #define SD_FILE_EXTENSION "pld"
-#define SD_PACKET_HEADER_TELEMETRY "TEL"
-#define SD_PACKET_HEADER_ACCELEROMETER "ACC"
-// Flushing the file is required after writing a certain number of bytes
-#define SD_FLUSH_BYTES 65536 // 2^16 bytes
+#define SD_PACKET_HEADER_TELEMETRY "TEL!"
+#define SD_PACKET_HEADER_ACCELEROMETER "ACC!"
+/*
+ * Flushing the file is required after writing a certain number of bytes.
+ * At our current sampling rate, this flushes about every 4-5 seconds.
+ */
+#define SD_FLUSH_BYTES 262144 // 2^18 bytes
 // FATFS limits file name length 
 #define SD_FILE_NAME_MAX_LENGTH 12
 
@@ -39,11 +42,11 @@ typedef struct __attribute__((packed))
     bool ok;
     bool sampling_state;
     bool temp_control_state;
-    uint8_t target_temp;
-    uint16_t current_temp;
-    uint16_t current_pressure;
-    uint16_t current_humidity;
-    uint8_t battery_voltage;
+    float target_temp;
+    float current_temp;
+    float current_pressure;
+    float current_humidity;
+    float battery_voltage;
 } SD_packet_telemetry;
 
 typedef struct __attribute__((packed))
@@ -94,11 +97,11 @@ bool PL_SDCard_WriteTelemetry(
     bool ok,
     bool sampling_state,
     bool temp_control_state,
-    uint8_t target_temp,
-    uint16_t current_temp,
-    uint16_t current_pressure,
-    uint16_t current_humidity,
-    uint8_t battery_voltage);
+    float target_temp,
+    float current_temp,
+    float current_pressure,
+    float current_humidity,
+    float battery_voltage);
 /**
  * @brief Writes a telemetry packet to the file on the SD card. Flushes the writes if the lines written exceeds `SD_FLUSH_BYTES`.
  * @param sd_card Pointer to the SD card handler structure.

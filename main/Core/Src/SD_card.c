@@ -77,11 +77,11 @@ bool PL_SDCard_WriteTelemetry(
     bool ok,
     bool sampling_state,
     bool temp_control_state,
-    uint8_t target_temp,
-    uint16_t current_temp,
-    uint16_t current_pressure,
-    uint16_t current_humidity,
-    uint8_t battery_voltage)
+    float target_temp,
+    float current_temp,
+    float current_pressure,
+    float current_humidity,
+    float battery_voltage)
 {
 #if SD_CARD_ENABLED
     // Pack data into struct
