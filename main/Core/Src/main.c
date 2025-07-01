@@ -95,6 +95,7 @@ float battery_voltage, cooler_current;
 // FFT variables
 float peak_amp_x, peak_amp_y, peak_amp_z;
 float peak_freq_x, peak_freq_y, peak_freq_z;
+// Flags for actions triggered by interrupts
 volatile bool adc_new_sample_ready, BME280_sample_ready, blink_toggle_ready, minor_error_blink_toggle_ready;
 /* USER CODE END PV */
 
