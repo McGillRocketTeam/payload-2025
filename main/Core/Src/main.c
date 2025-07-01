@@ -289,7 +289,6 @@ int main(void)
              (int)(1000 * cooler_current));
 
       adc_new_sample_ready = 0;
-
     }
     
     if (BME280_sample_ready)
