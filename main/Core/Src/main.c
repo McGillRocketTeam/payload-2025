@@ -281,7 +281,6 @@ int main(void)
     if (accelerometer.analysis_ready)
     {
       // Write new accelerometer data to the SD card
-      uint32_t time = HAL_GetTick();
       if (!PL_SDCard_WriteAccelerometer(&sd_card,
                                         HAL_GetTick(),
                                         (uint16_t *)accelerometer.fft_buffer_x,
@@ -291,7 +290,6 @@ int main(void)
         printf("Accelerometer packet SD card write error.\r\n");
         Minor_Error();
       }
-      printf("Wrote accelerometer packet, took %ld, bytes written %d\r\n", HAL_GetTick() - time, sd_card.bytes_written);
 
       // Perform FFT analysis (stored in amplitude buffers)
       PL_Accelerometer_Analyze(&accelerometer);
@@ -317,24 +315,8 @@ int main(void)
 
       adc_new_sample_ready = 0;
 
-      uint32_t time = HAL_GetTick();
-      if (!PL_SDCard_WriteTelemetry(&sd_card,
-                                    HAL_GetTick(),
-                                    ok,
-                                    true,
-                                    true,
-                                    target_temperature,
-                                    temperature,
-                                    pressure,
-                                    humidity,
-                                    battery_voltage))
-      {
-        printf("Telemetry packet SD card write error.\r\n");
-        Critical_Error();
-      }
-      printf("Wrote telemetry packet, took %ld, bytes written %d\r\n", HAL_GetTick() - time, sd_card.bytes_written);
     }
-
+    
     if (BME280_sample_ready)
     {
       BME280_Measure();
@@ -381,6 +363,22 @@ int main(void)
       }
       printf("Command received: %s, Data: %d\r\n", type, data);
     }
+
+    // TODO: Put this in a periodic function
+    // if (!PL_SDCard_WriteTelemetry(&sd_card,
+    //                               HAL_GetTick(),
+    //                               ok,
+    //                               true,
+    //                               true,
+    //                               target_temperature,
+    //                               temperature,
+    //                               pressure,
+    //                               humidity,
+    //                               battery_voltage))
+    // {
+    //   printf("Telemetry packet SD card write error.\r\n");
+    //   Minor_Error();
+    // }
 
     if (blink_toggle_ready)
     {
