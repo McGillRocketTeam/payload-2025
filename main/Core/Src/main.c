@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "fatfs.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -29,6 +30,7 @@
 #include "peltier.h"
 #include "BME280.h"
 #include "blink.h"
+#include "SD_card.h"
 #include "enabled.h"
 /* USER CODE END Includes */
 
@@ -63,6 +65,8 @@ CAN_HandleTypeDef hcan1;
 
 I2C_HandleTypeDef hi2c3;
 
+SPI_HandleTypeDef hspi1;
+
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
@@ -79,6 +83,7 @@ PL_ADC_Handler adc;
 PL_Blink_Handler blink;
 PL_CANBus_Handler can;
 PL_Peltier_Handler peltier;
+PL_SDCard_Handler sd_card;
 
 // Accelerometer buffer which DMA will write to. Needs to be shared a bit, so declared in main.
 volatile uint16_t accelerometer_buffer[ACCELEROMETER_SAMPLE_SIZE_TRIPLE];
@@ -95,6 +100,9 @@ float battery_voltage, cooler_current;
 // FFT variables
 float peak_amp_x, peak_amp_y, peak_amp_z;
 float peak_freq_x, peak_freq_y, peak_freq_z;
+// Others
+float target_temperature;
+
 // Flags for actions triggered by interrupts
 volatile bool adc_new_sample_ready, BME280_sample_ready, blink_toggle_ready, minor_error_blink_toggle_ready;
 /* USER CODE END PV */
@@ -113,6 +121,7 @@ static void MX_I2C3_Init(void);
 static void MX_UART4_Init(void);
 static void MX_TIM5_Init(void);
 static void MX_TIM9_Init(void);
+static void MX_SPI1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM8_Init(void);
 /* USER CODE BEGIN PFP */
@@ -176,6 +185,8 @@ int main(void)
   MX_UART4_Init();
   MX_TIM5_Init();
   MX_TIM9_Init();
+  MX_SPI1_Init();
+  MX_FATFS_Init();
   MX_TIM2_Init();
   MX_TIM8_Init();
   /* USER CODE BEGIN 2 */
@@ -247,6 +258,18 @@ int main(void)
     printf("Accelerometer start error.\r\n");
     Critical_Error();
   }
+
+  printf("Initializing SD card...\r\n");
+  if (!PL_SDCard_Init(&sd_card))
+  {
+    printf("SD card initialization/mount error.\r\n");
+    Critical_Error();
+  }
+  if (!PL_SDCard_Open(&sd_card))
+  {
+    printf("SD card file open error.\r\n");
+    Critical_Error();
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -257,6 +280,17 @@ int main(void)
 	  /* Gather data before communication functions --------------------------------*/
     if (accelerometer.analysis_ready)
     {
+      // Write new accelerometer data to the SD card
+      if (!PL_SDCard_WriteAccelerometer(&sd_card,
+                                        HAL_GetTick(),
+                                        (uint16_t *)accelerometer.fft_buffer_x,
+                                        (uint16_t *)accelerometer.fft_buffer_y,
+                                        (uint16_t *)accelerometer.fft_buffer_z))
+      {
+        printf("Accelerometer packet SD card write error.\r\n");
+        Minor_Error();
+      }
+
       // Perform FFT analysis (stored in amplitude buffers)
       PL_Accelerometer_Analyze(&accelerometer);
       // Find peak amplitudes and frequencies on each axis
@@ -280,8 +314,9 @@ int main(void)
              (int)(1000 * cooler_current));
 
       adc_new_sample_ready = 0;
-    }
 
+    }
+    
     if (BME280_sample_ready)
     {
       BME280_Measure();
@@ -328,6 +363,22 @@ int main(void)
       }
       printf("Command received: %s, Data: %d\r\n", type, data);
     }
+
+    // TODO: Put this in a periodic function
+    // if (!PL_SDCard_WriteTelemetry(&sd_card,
+    //                               HAL_GetTick(),
+    //                               ok,
+    //                               true,
+    //                               true,
+    //                               target_temperature,
+    //                               temperature,
+    //                               pressure,
+    //                               humidity,
+    //                               battery_voltage))
+    // {
+    //   printf("Telemetry packet SD card write error.\r\n");
+    //   Minor_Error();
+    // }
 
     if (blink_toggle_ready)
     {
@@ -660,6 +711,44 @@ static void MX_I2C3_Init(void)
   /* USER CODE BEGIN I2C3_Init 2 */
 
   /* USER CODE END I2C3_Init 2 */
+
+}
+
+/**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI1_Init(void)
+{
+
+  /* USER CODE BEGIN SPI1_Init 0 */
+
+  /* USER CODE END SPI1_Init 0 */
+
+  /* USER CODE BEGIN SPI1_Init 1 */
+
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_HARD_OUTPUT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
+
+  /* USER CODE END SPI1_Init 2 */
 
 }
 
@@ -1004,9 +1093,6 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, ACCEL_POWER_Pin|LD1_Pin|LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(BUCK_GPIO_Port, BUCK_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : ACCEL_POWER_Pin LD1_Pin LD2_Pin */
@@ -1021,21 +1107,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(COOLER_SHORT_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : SD_CS_Pin */
-  GPIO_InitStruct.Pin = SD_CS_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(SD_CS_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : SD_SCK_Pin SD_MISO_Pin SD_MOSI_Pin */
-  GPIO_InitStruct.Pin = SD_SCK_Pin|SD_MISO_Pin|SD_MOSI_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : SD_DETECT_Pin BUTTON_Pin */
   GPIO_InitStruct.Pin = SD_DETECT_Pin|BUTTON_Pin;
