@@ -15,7 +15,6 @@
 //
 #include "arm_math.h"
 #include "ADC.h"
-#include "serial_monitor.h"
 
 #define ADC_RAW_TO_ACCELERATION(raw, gain) ((ADC_RAW_TO_VOLTAGE(raw) - ADC_VOLTAGE_HALF) / gain)
 #define NORMALIZED_AMPLITUDE(a, b) (sqrtf(a * a + b * b) / FFT_SIZE_SINGLE)
