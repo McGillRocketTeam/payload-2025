@@ -278,6 +278,28 @@ int main(void)
   while (1)
   {
 	  /* Gather data before communication functions --------------------------------*/
+    if (adc_new_sample_ready)
+    {
+      // Calculate values from ADC reading
+      battery_voltage = PL_ADC_GetBatteryVoltage(&adc);
+      cooler_current = PL_ADC_GetCoolerCurrent(&adc);
+
+      printf("Injected conversion | battery voltage: %7d mV, cooler current: %5d mA\r\n",
+             (int)(1000 * battery_voltage),
+             (int)(1000 * cooler_current));
+
+      adc_new_sample_ready = 0;
+
+    }
+    
+    if (BME280_sample_ready)
+    {
+      BME280_Measure();
+      printf("BME280 sampled. Temperature: %3d C, Pressure: %7d Pa, Humidity: %3d %%\r\n", (int) temperature, (int) pressure, (int) humidity);
+      BME280_sample_ready = 0;
+    }
+
+	  /* Communicate with the outside world and other devices ----------------------*/
     if (accelerometer.analysis_ready)
     {
       // Write new accelerometer data to the SD card
@@ -303,28 +325,6 @@ int main(void)
       printf("peak_freq_z: %5d Hz, amp_z: %5d mV\r\n", (int)peak_freq_z, (int)(1000 * peak_amp_z));
     }
 
-    if (adc_new_sample_ready)
-    {
-      // Calculate values from ADC reading
-      battery_voltage = PL_ADC_GetBatteryVoltage(&adc);
-      cooler_current = PL_ADC_GetCoolerCurrent(&adc);
-
-      printf("Injected conversion | battery voltage: %7d mV, cooler current: %5d mA\r\n",
-             (int)(1000 * battery_voltage),
-             (int)(1000 * cooler_current));
-
-      adc_new_sample_ready = 0;
-
-    }
-    
-    if (BME280_sample_ready)
-    {
-      BME280_Measure();
-      printf("BME280 sampled. Temperature: %3d C, Pressure: %7d Pa, Humidity: %3d %%\r\n", (int) temperature, (int) pressure, (int) humidity);
-      BME280_sample_ready = 0;
-    }
-
-	  /* Communicate with the outside world and other devices ----------------------*/
     if (can.command_ready)
     {
       struct command com = PL_CANBus_ParseCommand(&can);
