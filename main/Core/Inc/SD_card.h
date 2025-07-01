@@ -10,8 +10,7 @@
 
 #include <stdbool.h>
 #include "fatfs.h"
-// TODO: Uncomment line to get accelerometer sizes after merging accelerometer code
-// #include "accelerometer.h"
+#include "accelerometer.h"
 
 /**
  * Data files will be named in the format:
@@ -46,8 +45,6 @@ typedef struct __attribute__((packed))
     uint8_t battery_voltage;
 } SD_packet_telemetry;
 
-// TODO: Remove before merging accelerometer code
-#define FFT_SIZE_SINGLE 256
 typedef struct __attribute__((packed))
 {
     uint32_t time_elapsed;
