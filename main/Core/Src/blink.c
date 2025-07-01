@@ -63,6 +63,9 @@ bool PL_Blink_Toggle(PL_Blink_Handler *blink)
 #else
     return blink_slow(blink);
 #endif
+#else
+    // Since we return whether the LED was blinked or not, if it's disabled, just return false.
+    return false;
 #endif
 }
 
@@ -78,5 +81,8 @@ bool blink_slow(PL_Blink_Handler *blink)
     blink->count++;
     blink->count %= BLINK_COUNTER_PERIOD;
     return blinked;
+#else
+    // Since we return whether the LED was blinked or not, if it's disabled, just return false.
+    return false;
 #endif
 }
