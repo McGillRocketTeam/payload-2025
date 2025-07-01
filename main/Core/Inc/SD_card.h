@@ -110,8 +110,8 @@ bool PL_SDCard_WriteTelemetry(
 bool PL_SDCard_WriteAccelerometer(
     PL_SDCard_Handler *sd_card,
     uint32_t time_elapsed,
-    uint16_t *x_buffer,
-    uint16_t *y_buffer,
-    uint16_t *z_buffer);
+    uint16_t x_buffer[FFT_SIZE_SINGLE],
+    uint16_t y_buffer[FFT_SIZE_SINGLE],
+    uint16_t z_buffer[FFT_SIZE_SINGLE]);
 
 #endif /* INC_SD_CARD_H_ */
