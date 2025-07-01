@@ -14,15 +14,16 @@
 
 /**
  * Data files will be named in the format:
- * "data0.pl", "data1.pl", ..., "dataN.pl"
+ * "nameN.ext"
  */
 #define SD_FILE_BASE_NAME "data"
+// Stands for PayLoad Data
 #define SD_FILE_EXTENSION "pld"
 #define SD_PACKET_HEADER_TELEMETRY "TEL"
 #define SD_PACKET_HEADER_ACCELEROMETER "ACC"
 // Flushing the file is required after writing a certain number of bytes
-#define SD_FLUSH_BYTES 512
-// FATFS limits file name length to 12 characters
+#define SD_FLUSH_BYTES 65536 // 2^16 bytes
+// FATFS limits file name length 
 #define SD_FILE_NAME_MAX_LENGTH 12
 
 typedef struct
