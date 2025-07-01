@@ -50,8 +50,8 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-#define MINOR_ERRORS_MAX 64
-#define MINOR_ERROR_BLINK_TIME 10 // milliseconds
+#define MINOR_ERRORS_MAX 128
+#define MINOR_ERROR_BLINK_TIME 100 // milliseconds
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -338,7 +338,7 @@ int main(void)
       blink_toggle_ready = 0;
     }
 
-    if (minor_error_blink_toggle_ready && HAL_GetTick() >= MINOR_ERROR_BLINK_TIME)
+    if (minor_error_blink_toggle_ready && HAL_GetTick() - minor_error_last_time >= MINOR_ERROR_BLINK_TIME)
     {
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
       minor_error_blink_toggle_ready = 0; // Reset blink ready flag
@@ -1102,6 +1102,7 @@ void Critical_Error()
   ok = 0;
   // Turn on LD2 to indicate critical error
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+  printf("A critical error occurred.\r\n");
 #if !FINAL_BUILD
   Error_Handler();
 #endif
@@ -1112,8 +1113,9 @@ void Minor_Error()
   if (ok)
   {
     minor_errors++;
-    if (minor_errors > MINOR_ERRORS_MAX)
+    if (minor_errors >= MINOR_ERRORS_MAX)
     {
+      printf("Minor error excess.\r\n");
       Critical_Error();
     }
     else
