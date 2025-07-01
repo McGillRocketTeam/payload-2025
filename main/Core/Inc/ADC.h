@@ -27,7 +27,7 @@
 #define BATTERY_VOLTAGE_FACTOR 9
 /* 
  * The integrated circuits do a very interesting conversion to cooler current, so the formula is:
- * I_cooler (in Amps) = 0.132 * V_ADC + 1.65
+ * I_cooler (in Amps) = (V_ADC - 1.65) / 0.132
  */
 #define COOLER_CURRENT_FACTOR 0.132
 #define COOLER_CURRENT_OFFSET ADC_VOLTAGE_HALF
