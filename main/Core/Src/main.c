@@ -260,12 +260,12 @@ int main(void)
   if (!PL_SDCard_Init(&sd_card))
   {
     printf("SD card initialization/mount error.\r\n");
-    Error_Handler();
+    Critical_Error();
   }
   if (!PL_SDCard_Open(&sd_card))
   {
     printf("SD card file open error.\r\n");
-    Error_Handler();
+    Critical_Error();
   }
   /* USER CODE END 2 */
 
