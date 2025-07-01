@@ -232,20 +232,20 @@ int main(void)
   if (!PL_ADC_Init(&adc, &hadc1, &hadc2, &hadc3, &TIM_ADC_SAMPLE, accelerometer_buffer))
   {
     printf("ADC initialization error\r\n");
-    Error_Handler();
+    Critical_Error();
   }
 
   // Initialize accelerometer handler
   if (!PL_Accelerometer_Init(&accelerometer, &TIM_ACCELEROMETER_SAMPLE, ACCEL_POWER_GPIO_Port, ACCEL_POWER_Pin))
   {
     printf("Accelerometer initialization error.\r\n");
-    Error_Handler();
+    Critical_Error();
   }
   // Start the accelerometer
   if (!PL_Accelerometer_Start(&accelerometer))
   {
     printf("Accelerometer start error.\r\n");
-    Error_Handler();
+    Critical_Error();
   }
   /* USER CODE END 2 */
 
