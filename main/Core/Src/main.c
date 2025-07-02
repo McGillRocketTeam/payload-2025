@@ -205,7 +205,7 @@ int main(void)
   ok = 1;
   minor_errors = 0;
   minor_error_last_time = 0;
-  minor_error_blink_toggle_ready = 0;
+  minor_error_blink_toggle_ready = false;
 
   printf("Starting CAN bus...\r\n");
   if (!PL_CANBus_Init(&can, &hcan1))
@@ -222,7 +222,7 @@ int main(void)
     Critical_Error();
   }
   // Initialize blink as ready to turn LED on first time through main loop
-  blink_toggle_ready = 1;
+  blink_toggle_ready = true;
 
   printf("Configuring BME280...\r\n");
   if (BME280_Config(OSRS_2, OSRS_16, OSRS_1, MODE_NORMAL, T_SB_0p5, IIR_16) != 0)
@@ -237,7 +237,7 @@ int main(void)
     Critical_Error();
   }
   // Initialize BME280 sample as ready to sample first time through main loop
-  BME280_sample_ready = 1;
+  BME280_sample_ready = true;
 
   printf("Initializing Peltier cooler PWM output...\r\n");
   if (!PL_Peltier_Init(&peltier, &TIM_PELTIER_PWM, &TIM_PELTIER_REFERENCE, TIM_CHANNEL_1, TIM_CHANNEL_1))
@@ -306,14 +306,14 @@ int main(void)
              (int)(1000 * battery_voltage),
              (int)(1000 * cooler_current));
 
-      adc_new_sample_ready = 0;
+      adc_new_sample_ready = false;
     }
     
     if (BME280_sample_ready)
     {
       BME280_Measure();
       printf("BME280 sampled. Temperature: %3d C, Pressure: %7d Pa, Humidity: %3d %%\r\n", (int) temperature, (int) pressure, (int) humidity);
-      BME280_sample_ready = 0;
+      BME280_sample_ready = false;
     }
 
 	  /* Communicate with the outside world and other devices ----------------------*/
@@ -438,13 +438,13 @@ int main(void)
       {
         printf("Light blinked. Time: %ld\r\n", HAL_GetTick());
       }
-      blink_toggle_ready = 0;
+      blink_toggle_ready = false;
     }
 
     if (minor_error_blink_toggle_ready && HAL_GetTick() - minor_error_last_time >= MINOR_ERROR_BLINK_TIME)
     {
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-      minor_error_blink_toggle_ready = 0; // Reset blink ready flag
+      minor_error_blink_toggle_ready = false; // Reset blink ready flag
     }
     /* USER CODE END WHILE */
 
@@ -1230,15 +1230,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == TIM_ADC_SAMPLE.Instance)
   {
     PL_ADC_InjectedConversion(&adc);
-    adc_new_sample_ready = 1;
+    adc_new_sample_ready = true;
   }
   else if (htim->Instance == TIM_BLINK.Instance)
   {
-    blink_toggle_ready = 1;
+    blink_toggle_ready = true;
   }
   else if (htim->Instance == TIM_TEMPERATURE_SAMPLE.Instance)
   {
-    BME280_sample_ready = 1;
+    BME280_sample_ready = true;
   }
   else if (htim->Instance == TIM_TELEMETRY.Instance)
   {
@@ -1287,7 +1287,7 @@ void Minor_Error()
     {
       minor_error_last_time = HAL_GetTick();
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-      minor_error_blink_toggle_ready = 1; // Set flag to toggle LD2 off after `MINOR_ERROR_BLINK_TIME`
+      minor_error_blink_toggle_ready = true; // Set flag to toggle LD2 off after `MINOR_ERROR_BLINK_TIME`
     }
   }
 }
