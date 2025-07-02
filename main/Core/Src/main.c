@@ -434,7 +434,10 @@ int main(void)
                           // Multiply temperature to take advantage of the precision
                           (int16_t)roundf(temperature * TEMPERATURE_FACTOR),
                           // Compress battery voltage into uint8 to take advantage of the precision
-                          (uint8_t)roundf(BATTERY_VOLTAGE_SEND_FACTOR * (battery_voltage - BATTERY_VOLTAGE_SEND_MIN) / (BATTERY_VOLTAGE_SEND_MAX - BATTERY_VOLTAGE_SEND_MIN)),
+                          (uint8_t)roundf(
+                              BATTERY_VOLTAGE_SEND_FACTOR *
+                              (battery_voltage - BATTERY_VOLTAGE_SEND_MIN) /
+                              (BATTERY_VOLTAGE_SEND_MAX - BATTERY_VOLTAGE_SEND_MIN)),
                           // Round to nearest Hz
                           (uint16_t)roundf(peak_freq_x),
                           (uint16_t)roundf(peak_freq_y),
@@ -451,16 +454,6 @@ int main(void)
       else
       {
         printf("Sent CAN bus messages.\r\n");
-        printf("CAN values sent: %d, %d, %d, %d, %d, %d, %d, %d\r\n",
-               (int16_t)roundf(temperature * TEMPERATURE_FACTOR),
-               (uint8_t)roundf(BATTERY_VOLTAGE_SEND_FACTOR * (battery_voltage - BATTERY_VOLTAGE_SEND_MIN) / (BATTERY_VOLTAGE_SEND_MAX - BATTERY_VOLTAGE_SEND_MIN)),
-               (uint16_t)roundf(peak_freq_x),
-               (uint16_t)roundf(peak_freq_y),
-               (uint16_t)roundf(peak_freq_z),
-               // Multiply amplitudes to take advantage of the precision
-               (uint16_t)roundf(peak_amp_x * VIBRATION_AMPLITUDE_FACTOR),
-               (uint16_t)roundf(peak_amp_y * VIBRATION_AMPLITUDE_FACTOR),
-               (uint16_t)roundf(peak_amp_z * VIBRATION_AMPLITUDE_FACTOR));
       }
 
       telemetry_report_ready = false;
