@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
+#include <math.h>
 #include "serial_monitor.h"
 #include "ADC.h"
 #include "accelerometer.h"
@@ -47,6 +48,7 @@
 #define TIM_ADC_SAMPLE htim5
 #define TIM_ACCELEROMETER_SAMPLE htim8
 #define TIM_BLINK htim9
+#define TIM_TELEMETRY htim12
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -73,6 +75,7 @@ TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
 TIM_HandleTypeDef htim8;
 TIM_HandleTypeDef htim9;
+TIM_HandleTypeDef htim12;
 
 UART_HandleTypeDef huart4;
 
@@ -104,7 +107,11 @@ float peak_freq_x, peak_freq_y, peak_freq_z;
 float target_temperature;
 
 // Flags for actions triggered by interrupts
-volatile bool adc_new_sample_ready, BME280_sample_ready, blink_toggle_ready, minor_error_blink_toggle_ready;
+volatile bool adc_new_sample_ready,
+  BME280_sample_ready,
+  blink_toggle_ready,
+  minor_error_blink_toggle_ready,
+  telemetry_report_ready;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -124,6 +131,7 @@ static void MX_TIM9_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM8_Init(void);
+static void MX_TIM12_Init(void);
 /* USER CODE BEGIN PFP */
 /**
  * @brief Signals a critical error. Flags Payload as not ok, permanently turns on LD2. 
@@ -189,6 +197,7 @@ int main(void)
   MX_FATFS_Init();
   MX_TIM2_Init();
   MX_TIM8_Init();
+  MX_TIM12_Init();
   /* USER CODE BEGIN 2 */
   printf("Initializing...\r\n");
 
@@ -270,6 +279,15 @@ int main(void)
     printf("SD card file open error.\r\n");
     Critical_Error();
   }
+
+  // Start the telemetry report timer
+  if (HAL_TIM_Base_Start_IT(&TIM_TELEMETRY) != HAL_OK)
+  {
+    printf("Telemetry report timer start error");
+    Critical_Error();
+  }
+  // Initialize telemetry report as ready to send telemetry data first time through main loop
+  telemetry_report_ready = true;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -310,6 +328,10 @@ int main(void)
       {
         printf("Accelerometer packet SD card write error.\r\n");
         Minor_Error();
+      }
+      else
+      {
+        printf("Wrote accelerometer packet to SD card.\r\n");
       }
 
       // Perform FFT analysis (stored in amplitude buffers)
@@ -363,21 +385,52 @@ int main(void)
       printf("Command received: %s, Data: %d\r\n", type, data);
     }
 
-    // TODO: Put this in a periodic function
-    // if (!PL_SDCard_WriteTelemetry(&sd_card,
-    //                               HAL_GetTick(),
-    //                               ok,
-    //                               true,
-    //                               true,
-    //                               target_temperature,
-    //                               temperature,
-    //                               pressure,
-    //                               humidity,
-    //                               battery_voltage))
-    // {
-    //   printf("Telemetry packet SD card write error.\r\n");
-    //   Minor_Error();
-    // }
+    if (telemetry_report_ready)
+    {
+      if (!PL_SDCard_WriteTelemetry(&sd_card,
+                                    HAL_GetTick(),
+                                    ok,
+                                    true,
+                                    true,
+                                    target_temperature,
+                                    temperature,
+                                    pressure,
+                                    humidity,
+                                    battery_voltage))
+      {
+        printf("Telemetry packet SD card write error.\r\n");
+        Minor_Error();
+      }
+      else
+      {
+        printf("Wrote telemetry packet to SD card.\r\n");
+      }
+
+      if (!PL_CANBus_Send(&can,
+                          ok,
+                          true,
+                          true,
+                          (uint8_t)roundf(target_temperature),
+                          (uint16_t)roundf(temperature),
+                          (uint8_t)roundf(battery_voltage),
+                          (uint16_t)roundf(peak_freq_x),
+                          (uint16_t)roundf(peak_freq_y),
+                          (uint16_t)roundf(peak_freq_z),
+                          (uint16_t)roundf(peak_amp_x),
+                          (uint16_t)roundf(peak_amp_y),
+                          (uint16_t)roundf(peak_amp_z),
+                          HAL_GetTick()))
+      {
+        printf("CAN bus send error.\r\n");
+        Minor_Error();
+      }
+      else
+      {
+        printf("Sent CAN bus messages.\r\n");
+      }
+
+      telemetry_report_ready = false;
+    }
 
     if (blink_toggle_ready)
     {
@@ -1024,6 +1077,44 @@ static void MX_TIM9_Init(void)
 }
 
 /**
+  * @brief TIM12 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM12_Init(void)
+{
+
+  /* USER CODE BEGIN TIM12_Init 0 */
+
+  /* USER CODE END TIM12_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+
+  /* USER CODE BEGIN TIM12_Init 1 */
+
+  /* USER CODE END TIM12_Init 1 */
+  htim12.Instance = TIM12;
+  htim12.Init.Prescaler = 72-1;
+  htim12.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim12.Init.Period = 400-1;
+  htim12.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim12.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim12) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim12, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM12_Init 2 */
+
+  /* USER CODE END TIM12_Init 2 */
+
+}
+
+/**
   * @brief UART4 Initialization Function
   * @param None
   * @retval None
@@ -1148,6 +1239,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   else if (htim->Instance == TIM_TEMPERATURE_SAMPLE.Instance)
   {
     BME280_sample_ready = 1;
+  }
+  else if (htim->Instance == TIM_TELEMETRY.Instance)
+  {
+    telemetry_report_ready = false;
   }
 }
 
