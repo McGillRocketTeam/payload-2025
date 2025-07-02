@@ -34,6 +34,12 @@ bool PL_Accelerometer_Init(PL_Accelerometer_Handler *accel, TIM_HandleTypeDef *t
 
 bool PL_Accelerometer_Start(PL_Accelerometer_Handler *accel)
 {
+    // Return early if already sampling
+    if (accel->sampling)
+    {
+        return true;
+    }
+
     // Start the timer which triggers the accelerometer ADC conversions
     accel->sampling = HAL_TIM_Base_Start(accel->timer) == HAL_OK;
     // Only power on the accelerometer if timer was started successfully
@@ -48,8 +54,14 @@ bool PL_Accelerometer_Start(PL_Accelerometer_Handler *accel)
 
 bool PL_Accelerometer_Stop(PL_Accelerometer_Handler *accel)
 {
+    // Return early if already not sampling
+    if (!accel->sampling)
+    {
+        return true;
+    }
+
     // Stop the timer which triggers the accelerometer ADC conversions
-    accel->sampling = HAL_TIM_Base_Stop(accel->timer) == HAL_OK;
+    accel->sampling = HAL_TIM_Base_Stop(accel->timer) != HAL_OK;
     // Only power off the accelerometer if timer was stopped successfully
     if (!accel->sampling)
     {
