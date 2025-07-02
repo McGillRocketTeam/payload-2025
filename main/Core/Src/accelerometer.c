@@ -27,24 +27,37 @@ bool PL_Accelerometer_Init(PL_Accelerometer_Handler *accel, TIM_HandleTypeDef *t
     accel->timer = timer;
     accel->power_GPIO_Port = power_GPIO_Port;
     accel->power_Pin = power_Pin;
+    accel->sampling = false;
     accel->analysis_ready = false;
     return arm_rfft_fast_init_f32(&accel->fft_handler, FFT_SIZE_SINGLE) == ARM_MATH_SUCCESS;
 }
 
 bool PL_Accelerometer_Start(PL_Accelerometer_Handler *accel)
 {
-    // Power on the accelerometer
-    HAL_GPIO_WritePin(accel->power_GPIO_Port, accel->power_Pin, GPIO_PIN_SET);
     // Start the timer which triggers the accelerometer ADC conversions
-    return HAL_TIM_Base_Start(accel->timer) == HAL_OK;
+    accel->sampling = HAL_TIM_Base_Start(accel->timer) == HAL_OK;
+    // Only power on the accelerometer if timer was started successfully
+    if (accel->sampling)
+    {
+        // Power on the accelerometer
+        HAL_GPIO_WritePin(accel->power_GPIO_Port, accel->power_Pin, GPIO_PIN_SET);
+    }
+    // Return whether accelerometer was succesfully toggled on
+    return accel->sampling;
 }
 
 bool PL_Accelerometer_Stop(PL_Accelerometer_Handler *accel)
 {
-    // Power off the accelerometer
-    HAL_GPIO_WritePin(accel->power_GPIO_Port, accel->power_Pin, GPIO_PIN_RESET);
     // Stop the timer which triggers the accelerometer ADC conversions
-    return HAL_TIM_Base_Stop(accel->timer) == HAL_OK;
+    accel->sampling = HAL_TIM_Base_Stop(accel->timer) == HAL_OK;
+    // Only power off the accelerometer if timer was stopped successfully
+    if (!accel->sampling)
+    {
+        // Power off the accelerometer
+        HAL_GPIO_WritePin(accel->power_GPIO_Port, accel->power_Pin, GPIO_PIN_RESET);
+    }
+    // Return whether accelerometer was succesfully toggled off
+    return !accel->sampling;
 }
 
 void PL_Accelerometer_Record(PL_Accelerometer_Handler *accel, volatile uint16_t buffer[FFT_SIZE_TRIPLE])

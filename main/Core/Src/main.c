@@ -221,8 +221,10 @@ int main(void)
     Critical_Error();
   }
 
+  // Initialize blink driver handler
   printf("Starting blinking routine...\r\n");
   PL_Blink_Init(&blink, &TIM_BLINK, LD1_GPIO_Port, LD1_Pin);
+  // Start blinking routine
   if (!PL_Blink_Start(&blink))
   {
     printf("Blink start error.\r\n");
@@ -231,6 +233,7 @@ int main(void)
   // Initialize blink as ready to turn LED on first time through main loop
   blink_toggle_ready = true;
 
+  // Initialize BME280 temperature sensor
   printf("Configuring BME280...\r\n");
   if (BME280_Config(OSRS_2, OSRS_16, OSRS_1, MODE_NORMAL, T_SB_0p5, IIR_16) != 0)
   {
@@ -246,6 +249,7 @@ int main(void)
   // Initialize BME280 sample as ready to sample first time through main loop
   BME280_sample_ready = true;
 
+  // Initialize Peltier cooler PWM output
   printf("Initializing Peltier cooler PWM output...\r\n");
   if (!PL_Peltier_Init(&peltier, &TIM_PELTIER_PWM, &TIM_PELTIER_REFERENCE, TIM_CHANNEL_1, TIM_CHANNEL_1))
   {
@@ -275,12 +279,14 @@ int main(void)
     Critical_Error();
   }
 
+  // Initialize SD card handler and mount file system
   printf("Initializing SD card...\r\n");
   if (!PL_SDCard_Init(&sd_card))
   {
     printf("SD card initialization/mount error.\r\n");
     Critical_Error();
   }
+  // Open next log file on SD card
   if (!PL_SDCard_Open(&sd_card))
   {
     printf("SD card file open error.\r\n");
@@ -397,9 +403,9 @@ int main(void)
       if (!PL_SDCard_WriteTelemetry(&sd_card,
                                     HAL_GetTick(),
                                     ok,
-                                    true,
-                                    true,
-                                    target_temperature,
+                                    accelerometer.sampling,
+                                    temperature_control_enabled,
+                                    temperatures[target_temperature_index],
                                     temperature,
                                     pressure,
                                     humidity,
@@ -415,9 +421,9 @@ int main(void)
 
       if (!PL_CANBus_Send(&can,
                           ok,
-                          true,
-                          true,
-                          (uint8_t)roundf(target_temperature),
+                          accelerometer.sampling,
+                          temperature_control_enabled,
+                          target_temperature_index,
                           (uint16_t)roundf(temperature),
                           (uint8_t)roundf(battery_voltage),
                           (uint16_t)roundf(peak_freq_x),

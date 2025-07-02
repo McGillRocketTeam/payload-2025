@@ -28,10 +28,11 @@ typedef struct {
 	TIM_HandleTypeDef *timer;
 	GPIO_TypeDef *power_GPIO_Port;
 	uint16_t power_Pin;
+	bool sampling;
+	volatile bool analysis_ready;
 	volatile uint16_t fft_buffer_x[FFT_SIZE_SINGLE];
 	volatile uint16_t fft_buffer_y[FFT_SIZE_SINGLE];
 	volatile uint16_t fft_buffer_z[FFT_SIZE_SINGLE];
-	volatile bool analysis_ready;
 	float amplitudes_x[FFT_AMPLITUDE_SIZE];
 	float amplitudes_y[FFT_AMPLITUDE_SIZE];
 	float amplitudes_z[FFT_AMPLITUDE_SIZE];
