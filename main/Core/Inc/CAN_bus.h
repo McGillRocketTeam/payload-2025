@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "stm32f4xx.h"
+#include "temperature.h"
 
 // Base ID for the CAN messages. Message ID is the base ID for the first message, and subsequent messages are assigned sequential IDs.
 #define CAN_BASE_ID 0x300
@@ -74,8 +75,6 @@ enum command_type
     NONE = -1,
     INVALID = -2
 };
-
-#define N_TEMPERATURES 8
 
 union command_data
 {

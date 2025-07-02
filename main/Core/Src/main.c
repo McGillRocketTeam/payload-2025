@@ -32,6 +32,7 @@
 #include "BME280.h"
 #include "blink.h"
 #include "SD_card.h"
+#include "temperature.h"
 #include "enabled.h"
 /* USER CODE END Includes */
 
@@ -103,8 +104,9 @@ float battery_voltage, cooler_current;
 // FFT variables
 float peak_amp_x, peak_amp_y, peak_amp_z;
 float peak_freq_x, peak_freq_y, peak_freq_z;
-// Others
-float target_temperature;
+// Temperature control
+uint8_t target_temperature_index;
+bool temperature_control_enabled;
 
 // Flags for actions triggered by interrupts
 volatile bool adc_new_sample_ready,
@@ -207,6 +209,11 @@ int main(void)
   minor_error_last_time = 0;
   minor_error_blink_toggle_ready = false;
 
+  // Initialize temperature control variables
+  target_temperature_index = 0; // default to coldest temperature
+  temperature_control_enabled = true; // default to cooling being on
+
+  // Initialize and start CAN bus
   printf("Starting CAN bus...\r\n");
   if (!PL_CANBus_Init(&can, &hcan1))
   {
