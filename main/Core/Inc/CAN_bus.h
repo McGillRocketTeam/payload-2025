@@ -26,7 +26,7 @@ struct CAN_msg_1_s
     bool sampling_state;
     bool temp_ctrl_state;
     uint8_t target_temp;
-    uint16_t current_temp;
+    int16_t current_temp;
     uint8_t battery_voltage; // Data type not specified on interfacing requirements, range of 10.0-25.0V required
 };
 
@@ -148,7 +148,7 @@ bool PL_CANBus_Send(
     bool sampling_state,
     bool temperature_control_state,
     uint8_t target_temp,
-    uint16_t current_temp,
+    int16_t current_temp,
     uint8_t battery_voltage,
     uint16_t frequency_x,
     uint16_t frequency_y,

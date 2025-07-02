@@ -43,6 +43,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+// Timer purpose aliases
 #define TIM_TEMPERATURE_SAMPLE htim2
 #define TIM_PELTIER_REFERENCE htim3
 #define TIM_PELTIER_PWM htim4
@@ -50,6 +51,12 @@
 #define TIM_ACCELEROMETER_SAMPLE htim8
 #define TIM_BLINK htim9
 #define TIM_TELEMETRY htim12
+// CAN conversion variables
+#define TEMPERATURE_FACTOR 100 // send temperature in centiCelsius to take advantage of the precision
+#define BATTERY_VOLTAGE_SEND_MIN 10.0f
+#define BATTERY_VOLTAGE_SEND_MAX 21.0f
+#define BATTERY_VOLTAGE_SEND_FACTOR 256 // 2^8 is the maximum value for a uint8
+#define VIBRATION_AMPLITUDE_FACTOR 10000 // send amplitude in mV * 10 to take advantage of the precision
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -424,14 +431,18 @@ int main(void)
                           accelerometer.sampling,
                           temperature_control_enabled,
                           target_temperature_index,
-                          (uint16_t)roundf(temperature),
-                          (uint8_t)roundf(battery_voltage),
+                          // Multiply temperature to take advantage of the precision
+                          (int16_t)roundf(temperature * TEMPERATURE_FACTOR),
+                          // Compress battery voltage into uint8 to take advantage of the precision
+                          (uint8_t)roundf(BATTERY_VOLTAGE_SEND_FACTOR * (battery_voltage - BATTERY_VOLTAGE_SEND_MIN) / (BATTERY_VOLTAGE_SEND_MAX - BATTERY_VOLTAGE_SEND_MIN)),
+                          // Round to nearest Hz
                           (uint16_t)roundf(peak_freq_x),
                           (uint16_t)roundf(peak_freq_y),
                           (uint16_t)roundf(peak_freq_z),
-                          (uint16_t)roundf(peak_amp_x),
-                          (uint16_t)roundf(peak_amp_y),
-                          (uint16_t)roundf(peak_amp_z),
+                          // Multiply amplitudes to take advantage of the precision
+                          (uint16_t)roundf(peak_amp_x * VIBRATION_AMPLITUDE_FACTOR),
+                          (uint16_t)roundf(peak_amp_y * VIBRATION_AMPLITUDE_FACTOR),
+                          (uint16_t)roundf(peak_amp_z * VIBRATION_AMPLITUDE_FACTOR),
                           HAL_GetTick()))
       {
         printf("CAN bus send error.\r\n");
@@ -440,6 +451,16 @@ int main(void)
       else
       {
         printf("Sent CAN bus messages.\r\n");
+        printf("CAN values sent: %d, %d, %d, %d, %d, %d, %d, %d\r\n",
+               (int16_t)roundf(temperature * TEMPERATURE_FACTOR),
+               (uint8_t)roundf(BATTERY_VOLTAGE_SEND_FACTOR * (battery_voltage - BATTERY_VOLTAGE_SEND_MIN) / (BATTERY_VOLTAGE_SEND_MAX - BATTERY_VOLTAGE_SEND_MIN)),
+               (uint16_t)roundf(peak_freq_x),
+               (uint16_t)roundf(peak_freq_y),
+               (uint16_t)roundf(peak_freq_z),
+               // Multiply amplitudes to take advantage of the precision
+               (uint16_t)roundf(peak_amp_x * VIBRATION_AMPLITUDE_FACTOR),
+               (uint16_t)roundf(peak_amp_y * VIBRATION_AMPLITUDE_FACTOR),
+               (uint16_t)roundf(peak_amp_z * VIBRATION_AMPLITUDE_FACTOR));
       }
 
       telemetry_report_ready = false;
