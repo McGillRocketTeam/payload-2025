@@ -26,6 +26,7 @@
 #include "peltier.h"
 #include "BME280.h"
 #include "blink.h"
+#include <math.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -65,6 +66,7 @@ PL_Peltier_Handler peltier;
 PL_Blink_Handler blink;
 
 float temperature, pressure, humidity;
+float temperature_setpoint;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -172,55 +174,43 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   printf("Beginning main loop.\r\n");
-  while (1)
-  {
-		printf("Time: %ld\r\n", HAL_GetTick());
+	float Kp = 5.0f, Ki = 1.0f, Kd = 0.2f;
+	float integral = 0.0f;
+	float last_error = 0.0f;
+	//CHANGE ABOVE TO TUNE
 
+	while (1) {
 		if (can.command_ready) {
 			struct command com = PL_CANBus_ParseCommand(&can);
-			char *type;
-			int data = 0;
-			switch (com.type)
-			{
-			case RESET_PAYLOAD:
-				type = "RESET_PAYLOAD";
-				break;
-			case TOGGLE_SAMPLING:
-				type = "TOGGLE_SAMPLING";
-				data = com.data.on;
-				break;
-			case TOGGLE_COOLER:
-				type = "TOGGLE_COOLER";
-				data = com.data.on;
-				break;
-			case TOGGLE_LAUNCH_MODE:
-				type = "TOGGLE_LAUNCH_MODE";
-				data = com.data.on;
-				break;
-			case LANDED:
-				type = "LANDED";
-				break;
-			case SET_TEMPERATURE:
-				type = "SET_TEMPERATURE";
-				data = com.data.temp;
-				break;
-			case NONE:
-				type = "NONE";
-				break;
-			case INVALID:
-				type = "INVALID";
-				break;
+			if (com.type == SET_TEMPERATURE) {
+				temperature_setpoint = com.data.temp;
+				float error;
+
+				do {
+					BME280_Measure();
+					error = temperature_setpoint - temperature;
+
+					// 0.1=delta t, change with loop time
+					integral += error * 0.1f;
+					float derivative = (error - last_error) / 0.1f;
+					last_error = error;
+
+					float output = Kp * error + Ki * integral + Kd * derivative;
+
+					if (output > 100.0f){output = 100.0f;}
+					if (output < 0.0f){output = 0.0f;}
+
+					PL_Peltier_SetCycle(&peltier, output / 100.0f);
+					HAL_Delay(100);
+				} while (fabs(error) > 1);
 			}
-			printf("Command received: %s, Data: %d\r\n", type, data);
 		}
+			/* USER CODE END WHILE */
 
-		HAL_Delay(1000);
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
-  }
-  /* USER CODE END 3 */
-}
+			/* USER CODE BEGIN 3 */
+		}
+		/* USER CODE END 3 */
+	}
 
 /**
   * @brief System Clock Configuration
