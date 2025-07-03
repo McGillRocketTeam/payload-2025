@@ -114,7 +114,7 @@ float battery_voltage, cooler_current;
 float peak_amp_x, peak_amp_y, peak_amp_z;
 float peak_freq_x, peak_freq_y, peak_freq_z;
 // Temperature control
-uint8_t target_temperature_index;
+float target_temperature;
 bool temperature_control_enabled;
 
 // Flags for actions triggered by interrupts
@@ -219,7 +219,7 @@ int main(void)
   minor_error_blink_toggle_ready = false;
 
   // Initialize temperature control variables
-  target_temperature_index = 0; // default to coldest temperature
+  target_temperature = temperatures[0]; // default to coldest temperature
   temperature_control_enabled = true; // default to cooling being on
 
   // Initialize and start CAN bus
@@ -406,10 +406,8 @@ int main(void)
         printf("Landed.\r\n");
         break;
       case SET_TEMPERATURE:
-        target_temperature_index = com.data.temp;
-        printf("Target temperature set to %d (%d).\r\n",
-               (int)temperatures[target_temperature_index],
-               target_temperature_index);
+        target_temperature = com.data.temp;
+        printf("Target temperature set to %d.\r\n", (int)target_temperature);
         break;
       case NONE:
         printf("No command received.\r\n");
@@ -428,7 +426,7 @@ int main(void)
                                     ok,
                                     accelerometer.sampling,
                                     temperature_control_enabled,
-                                    temperatures[target_temperature_index],
+                                    target_temperature,
                                     temperature,
                                     pressure,
                                     humidity,
@@ -442,6 +440,16 @@ int main(void)
         printf("Wrote telemetry packet to SD card.\r\n");
       }
 
+      // Determine target temperature
+      uint8_t target_temperature_index = 0;
+      for (int i = 0; i < N_TEMPERATURES; i++)
+      {
+        if (target_temperature == temperatures[i])
+        {
+          target_temperature_index = i;
+        }
+      }
+      // Send CAN message
       if (!PL_CANBus_Send(&can,
                           ok,
                           accelerometer.sampling,
