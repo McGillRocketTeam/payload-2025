@@ -57,6 +57,7 @@
 #define BATTERY_VOLTAGE_SEND_MAX 21.0f
 #define BATTERY_VOLTAGE_SEND_FACTOR 256 // 2^8 is the maximum value for a uint8
 #define VIBRATION_AMPLITUDE_FACTOR 10000 // send amplitude in mV * 10 to take advantage of the precision
+#define BOOL_TO_ON(b) (b ? "on" : "off")
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -369,40 +370,49 @@ int main(void)
     if (can.command_ready)
     {
       struct command com = PL_CANBus_ParseCommand(&can);
-      char *type;
-      int data = 0;
       switch (com.type)
       {
       case RESET_PAYLOAD:
-        type = "RESET_PAYLOAD";
+        // TODO: Reset the payload
+        printf("CAN: Payload reset.\r\n");
         break;
       case TOGGLE_SAMPLING:
-        type = "TOGGLE_SAMPLING";
-        data = com.data.on;
+        // Call proper accelerometer function depending on toggle parameter, then check return type
+        if (!(com.data.on ? PL_Accelerometer_Start(&accelerometer) : PL_Accelerometer_Stop(&accelerometer)))
+        {
+          printf("CAN: Error switching accelerometer to %s.\r\n", BOOL_TO_ON(com.data.on));
+          Minor_Error();
+        }
+        else
+        {
+          printf("CAN: Accelerometer switched to %s.\r\n", BOOL_TO_ON(com.data.on));
+        }
         break;
       case TOGGLE_COOLER:
-        type = "TOGGLE_COOLER";
-        data = com.data.on;
+        temperature_control_enabled = com.data.on;
+        printf("CAN: Temperature control switched to %s.\r\n", BOOL_TO_ON(com.data.on));
         break;
       case TOGGLE_LAUNCH_MODE:
-        type = "TOGGLE_LAUNCH_MODE";
-        data = com.data.on;
+        // Launch mode doesn't do anything since we don't need it anymore
+        printf("CAN: Launch mode switched to %s.\r\n", BOOL_TO_ON(com.data.on));
         break;
       case LANDED:
-        type = "LANDED";
+        printf("CAN: Landed\r\n");
         break;
       case SET_TEMPERATURE:
-        type = "SET_TEMPERATURE";
-        data = com.data.temp;
+        target_temperature_index = com.data.temp;
+        printf("CAN: Target temperature set to %d (%d).\r\n",
+               (int)temperatures[target_temperature_index],
+               target_temperature_index);
         break;
       case NONE:
-        type = "NONE";
+        printf("CAN: No command received.\r\n");
         break;
       case INVALID:
-        type = "INVALID";
+        printf("CAN: Invalid command received.\r\n");
+        Minor_Error();
         break;
       }
-      printf("Command received: %s, Data: %d\r\n", type, data);
     }
 
     if (telemetry_report_ready)
