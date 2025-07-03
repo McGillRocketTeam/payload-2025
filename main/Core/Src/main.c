@@ -51,19 +51,20 @@
 #define TIM_ACCELEROMETER_SAMPLE htim8
 #define TIM_BLINK htim9
 #define TIM_TELEMETRY htim12
-// CAN conversion variables
-#define TEMPERATURE_FACTOR 100 // send temperature in centiCelsius to take advantage of the precision
-#define BATTERY_VOLTAGE_SEND_MIN 10.0f
-#define BATTERY_VOLTAGE_SEND_MAX 21.0f
+// CAN conversion constants
+#define TEMPERATURE_FACTOR 100 // Send temperature in centiCelsius to take advantage of the precision
+#define BATTERY_VOLTAGE_SEND_MIN 10.0f // Volts
+#define BATTERY_VOLTAGE_SEND_MAX 21.0f // Volts
 #define BATTERY_VOLTAGE_SEND_FACTOR 256 // 2^8 is the maximum value for a uint8
-#define VIBRATION_AMPLITUDE_FACTOR 10000 // send amplitude in mV * 10 to take advantage of the precision
-#define BOOL_TO_ON(b) (b ? "on" : "off")
+#define VIBRATION_AMPLITUDE_FACTOR 10000 // Send amplitude in mV * 10 to take advantage of the precision
+// Error handling constants
+#define MINOR_ERRORS_MAX 128
+#define MINOR_ERROR_BLINK_TIME 100 // milliseconds
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-#define MINOR_ERRORS_MAX 128
-#define MINOR_ERROR_BLINK_TIME 100 // milliseconds
+#define BOOL_TO_ON(b) (b ? "on" : "off")
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
