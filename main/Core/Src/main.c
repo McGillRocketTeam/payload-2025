@@ -370,46 +370,47 @@ int main(void)
     if (can.command_ready)
     {
       struct command com = PL_CANBus_ParseCommand(&can);
+      printf("CAN: ");
       switch (com.type)
       {
       case RESET_PAYLOAD:
         // TODO: Reset the payload
-        printf("CAN: Payload reset.\r\n");
+        printf("Payload reset.\r\n");
         break;
       case TOGGLE_SAMPLING:
         // Call proper accelerometer function depending on toggle parameter, then check return type
         if (!(com.data.on ? PL_Accelerometer_Start(&accelerometer) : PL_Accelerometer_Stop(&accelerometer)))
         {
-          printf("CAN: Error switching accelerometer to %s.\r\n", BOOL_TO_ON(com.data.on));
+          printf("Error switching accelerometer to %s.\r\n", BOOL_TO_ON(com.data.on));
           Minor_Error();
         }
         else
         {
-          printf("CAN: Accelerometer switched to %s.\r\n", BOOL_TO_ON(com.data.on));
+          printf("Accelerometer switched to %s.\r\n", BOOL_TO_ON(com.data.on));
         }
         break;
       case TOGGLE_COOLER:
         temperature_control_enabled = com.data.on;
-        printf("CAN: Temperature control switched to %s.\r\n", BOOL_TO_ON(com.data.on));
+        printf("Temperature control switched to %s.\r\n", BOOL_TO_ON(com.data.on));
         break;
       case TOGGLE_LAUNCH_MODE:
         // Launch mode doesn't do anything since we don't need it anymore
-        printf("CAN: Launch mode switched to %s.\r\n", BOOL_TO_ON(com.data.on));
+        printf("Launch mode switched to %s.\r\n", BOOL_TO_ON(com.data.on));
         break;
       case LANDED:
-        printf("CAN: Landed\r\n");
+        printf("Landed.\r\n");
         break;
       case SET_TEMPERATURE:
         target_temperature_index = com.data.temp;
-        printf("CAN: Target temperature set to %d (%d).\r\n",
+        printf("Target temperature set to %d (%d).\r\n",
                (int)temperatures[target_temperature_index],
                target_temperature_index);
         break;
       case NONE:
-        printf("CAN: No command received.\r\n");
+        printf("No command received.\r\n");
         break;
       case INVALID:
-        printf("CAN: Invalid command received.\r\n");
+        printf("Invalid command received.\r\n");
         Minor_Error();
         break;
       }
