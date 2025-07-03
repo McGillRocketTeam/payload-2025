@@ -375,7 +375,11 @@ int main(void)
       switch (com.type)
       {
       case RESET_PAYLOAD:
-        // TODO: Reset the payload
+        // Reset STM32 via toggling buck reset
+        HAL_GPIO_TogglePin(BUCK_GPIO_Port, BUCK_Pin);
+        // Wait a short delay to ensure signal stabilizes
+        HAL_Delay(10);
+        HAL_GPIO_TogglePin(BUCK_GPIO_Port, BUCK_Pin);
         printf("Payload reset.\r\n");
         break;
       case TOGGLE_SAMPLING:
