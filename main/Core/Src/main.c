@@ -339,7 +339,7 @@ int main(void)
       battery_voltage = PL_ADC_GetBatteryVoltage(&adc);
       cooler_current = PL_ADC_GetCoolerCurrent(&adc);
 
-      PL_Log(LOG_ADC, LOG_OK, "[Injected conversion] Battery Voltage: %7d mV | Cooler Current: %5d mA",
+      PL_Log(LOG_ADC, LOG_OK, "Battery Voltage: %7d mV | Cooler Current: %5d mA",
              (int)(1000 * battery_voltage),
              (int)(1000 * cooler_current));
 
@@ -516,6 +516,7 @@ int main(void)
       if (PL_Blink_Toggle(&blink))
       {
         PL_Log(LOG_BLINK, LOG_OK, "Blinked.");
+        Minor_Error(LOG_DEBUG, "Minor error test.");
       }
       blink_toggle_ready = false;
     }
@@ -1376,9 +1377,16 @@ void Minor_Error(enum log_category category, const char *msg)
       err_num_color = COLOR_ERROR;
     }
     PL_Log(
-      category,
-      LOG_WARNING,
-      "[ME:%s%3d%s] %s", err_num_color, minor_errors, COLOR_RESET, msg);
+        category,
+        LOG_WARNING,
+        "%s[%sME:%s%3d%s]%s %s",
+        COLOR_WHITE,
+        COLOR_NONE,
+        err_num_color,
+        minor_errors,
+        COLOR_WHITE,
+        COLOR_RESET,
+        msg);
     if (minor_errors >= MINOR_ERRORS_MAX)
     {
       Critical_Error(LOG_GENERAL, "Minor error excess.");

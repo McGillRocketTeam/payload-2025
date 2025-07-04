@@ -23,7 +23,7 @@ extern UART_HandleTypeDef huart4;
 
 // ANSI color escape codes
 #define COLOR_RESET          "\x1b[0m"
-#define COLOR_NONE           ""
+#define COLOR_NONE           COLOR_RESET
 #define COLOR_BLACK          "\x1b[30m"
 #define COLOR_RED            "\x1b[31m"
 #define COLOR_GREEN          "\x1b[32m"
@@ -82,7 +82,7 @@ extern const enum log_status LOG_STATUSES_DISABLED[];
 // Log status colors
 #define COLOR_INITIALIZING COLOR_MAGENTA
 #define COLOR_OK           COLOR_BRIGHT_GREEN
-#define COLOR_WARNING      COLOR_YELLOW
+#define COLOR_WARNING      COLOR_BRIGHT_YELLOW
 #define COLOR_ERROR        COLOR_BRIGHT_RED
 
 // Provide printf function prototype to prevent implicit definition warnings

@@ -55,7 +55,7 @@ int PL_Log(enum log_category category, enum log_status status, const char *restr
   }
 
   // Print logging time left padded with 8 character limit
-  if (printf("[%8ld] ", HAL_GetTick()) == EOF)
+  if (printf("%s[%s%8ld%s]%s ", COLOR_WHITE, COLOR_RESET, HAL_GetTick(), COLOR_WHITE, COLOR_RESET) == EOF)
   {
     // Fail early if printf failed
     return EOF;
@@ -105,7 +105,7 @@ int PL_Log(enum log_category category, enum log_status status, const char *restr
     break;
   }
   // Print log type right padded by length of longest string
-  if (printf("[%s%-13s%s] ", color, category_string, COLOR_RESET) == EOF)
+  if (printf("%s[%s%-13s%s]%s ", COLOR_WHITE, color, category_string, COLOR_WHITE, COLOR_RESET) == EOF)
   {
     // Fail early if printf failed
     return EOF;
@@ -133,7 +133,7 @@ int PL_Log(enum log_category category, enum log_status status, const char *restr
     break;
   }
   // Print log status right padded by length of longest string
-  if (printf("[%s%-5s%s] ", color, status_string, COLOR_RESET) == EOF)
+  if (printf("%s[%s%-5s%s]%s ", COLOR_WHITE, color, status_string, COLOR_WHITE, COLOR_RESET) == EOF)
   {
     // Fail early if printf failed
     return EOF;
