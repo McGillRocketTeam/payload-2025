@@ -1,5 +1,5 @@
 /*
- * temperatures.h
+ * temperature.h
  *
  *  Created on: Jul 2, 2025
  *      Author: akash
@@ -10,6 +10,6 @@
 
 #define N_TEMPERATURES 8
 
-extern float temperatures[N_TEMPERATURES];
+extern const float TEMPERATURES[N_TEMPERATURES];
 
 #endif /* INC_TEMPERATURES_H_ */

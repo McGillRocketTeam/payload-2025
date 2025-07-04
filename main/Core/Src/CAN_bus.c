@@ -92,7 +92,7 @@ struct command PL_CANBus_ParseCommand(PL_CANBus_Handler *c)
             com.type = SET_TEMPERATURE;
             if (c->Rx_data[0] < N_TEMPERATURES)
             {
-                data.temp = temperatures[c->Rx_data[0]];
+                data.temp = TEMPERATURES[c->Rx_data[0]];
             }
             break;
         default:

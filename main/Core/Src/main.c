@@ -219,7 +219,7 @@ int main(void)
   minor_error_blink_toggle_ready = false;
 
   // Initialize temperature control variables
-  target_temperature = temperatures[0]; // default to coldest temperature
+  target_temperature = TEMPERATURES[0]; // default to coldest temperature
   temperature_control_enabled = true; // default to cooling being on
 
   // Initialize and start CAN bus
@@ -445,7 +445,7 @@ int main(void)
       uint8_t target_temperature_index = 0;
       for (int i = 0; i < N_TEMPERATURES; i++)
       {
-        if (target_temperature == temperatures[i])
+        if (target_temperature == TEMPERATURES[i])
         {
           target_temperature_index = i;
         }
