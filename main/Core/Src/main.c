@@ -414,6 +414,7 @@ int main(void)
                   ? PL_Accelerometer_Start(&accelerometer)
                   : PL_Accelerometer_Stop(&accelerometer)))
         {
+          // Format error message since `Minor_Error` isn't variadic
           char msg[64];
           snprintf(msg, sizeof(msg), "Switching accelerometer to %s failed.", BOOL_TO_ON(com.data.on));
           Minor_Error(LOG_CAN_BUS, msg);
