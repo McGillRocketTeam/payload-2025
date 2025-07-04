@@ -41,21 +41,32 @@ extern UART_HandleTypeDef huart4;
 #define COLOR_BRIGHT_CYAN    "\x1b[96m"
 #define COLOR_WHITE          "\x1b[97m"
 
+// XMacro to perform a macro on each element of the enum
+#define ID_ENUM(X)                          \
+    X(LOG_GENERAL, 0b000000001u)            \
+    X(LOG_ACCELEROMETER, 0b000000010u)      \
+    X(LOG_ADC, 0b000000100u)                \
+    X(LOG_BLINK, 0b000001000u)              \
+    X(LOG_CAN_BUS, 0b000010000u)            \
+    X(LOG_PELTIER, 0b000100000u)            \
+    X(LOG_SD_CARD, 0b001000000u)            \
+    X(LOG_TEMPERATURE_SENSOR, 0b010000000u) \
+    X(LOG_DEBUG, 0b100000000u)              \
+    X(LOG_NONE, 0b000000000u)
+
+// Macro to assign each ID to a value
+#define ASSIGN(id, val) id = val,
 enum log_category
 {
-   LOG_GENERAL            = 0b000000001u,
-   LOG_ACCELEROMETER      = 0b000000010u,
-   LOG_ADC                = 0b000000100u,
-   LOG_BLINK              = 0b000001000u,
-   LOG_CAN_BUS            = 0b000010000u,
-   LOG_PELTIER            = 0b000100000u,
-   LOG_SD_CARD            = 0b001000000u,
-   LOG_TEMPERATURE_SENSOR = 0b010000000u,
-   LOG_DEBUG              = 0b100000000u,
-   LOG_NONE               = 0b000000000u
+    // Build enum
+    ID_ENUM(ASSIGN)
 };
 
-#define N_CATEGORIES 9
+// Macro to count the number of categories in the enum
+#define COUNT(id, val) +1
+// Count number of categories (-1 since `LOG_NONE` should not count as a category)
+#define N_CATEGORIES (0 ID_ENUM(COUNT) - 1)
+
 // To change filters, see `serial_monitor.c`.
 extern const enum log_category category_filter;
 
@@ -97,9 +108,9 @@ int printf(const char *restrict format, ...);
  * A category is automatically filtered out if the corresponding feature is disabled in `enabled.h`.
  * @param category_primary The primary category of the message to log. This will be the one which is printed.
  * @param other_categories Set of other categories to which this message belongs. Used for message filtering.
- * Can be passed as a single `log_category` or as a bitwise or of multiple of them. 
+ * Can be passed as a single `log_category` or as a bitwise or of multiple of them.
  * If no other category applies, use `LOG_NONE` or `0`.
- * @param status The status applying to the message being logged. 
+ * @param status The status applying to the message being logged.
  * Is displayed in the message as well as being used for message filtering.
  * @param format The format string, as used in `printf`.
  * @param ... The values used to format the string.
