@@ -1379,11 +1379,12 @@ void Minor_Error(enum log_category category, const char *msg)
     PL_Log(
         category,
         LOG_WARNING,
-        "%s[%sME:%s%3d%s]%s %s",
+        "%s[%sME:%s%3d%s%s]%s %s",
         COLOR_WHITE,
-        COLOR_NONE,
+        COLOR_RESET,
         err_num_color,
         minor_errors,
+        COLOR_RESET,
         COLOR_WHITE,
         COLOR_RESET,
         msg);
