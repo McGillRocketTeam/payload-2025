@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
+#include <string.h>
 #include <math.h>
 #include "serial_monitor.h"
 #include "ADC.h"
@@ -57,6 +58,8 @@
 #define BATTERY_VOLTAGE_SEND_MAX 21.0f // Volts
 #define BATTERY_VOLTAGE_SEND_FACTOR 256 // 2^8 is the maximum value for a uint8
 #define VIBRATION_AMPLITUDE_FACTOR 10000 // Send amplitude in mV * 10 to take advantage of the precision
+
+#define PELTIER_START_CYCLE 0.0f
 // Error handling constants
 #define MINOR_ERRORS_MAX 128
 #define MINOR_ERROR_BLINK_TIME 100 // milliseconds
@@ -148,15 +151,19 @@ static void MX_TIM12_Init(void);
  * @brief Signals a critical error. Flags Payload as not ok, permanently turns on LD2. 
  * Calls `Error_Handler` if not in final build.
  * @note Critical errors occur if peripheral initialization fails, or in other similar instances.
+ * @param category The category in which the critical error occurred.
+ * @param msg A description of the critical error.
  */
-void Critical_Error();
+void Critical_Error(enum log_category category, const char *msg);
 /**
  * @brief Signals a minor error. Briefly blinks LD2. Keeps track of number of minor errors, 
  * and triggers `Critical_Error` if it exceeds `MINOR_ERRORS_MAX`.
  * @note Critical errors occur on single failures 
  * (i.e. one failed CAN message send or one failed peripheral sample).
+ * @param category The category in which the minor error occurred.
+ * @param msg A description of the minor error.
  */
-void Minor_Error();
+void Minor_Error(enum log_category category, const char *msg);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -210,7 +217,7 @@ int main(void)
   MX_TIM8_Init();
   MX_TIM12_Init();
   /* USER CODE BEGIN 2 */
-  printf("Initializing...\r\n");
+  PL_Log(LOG_GENERAL, LOG_INITIALIZING, "Initializing...");
 
   // Initialize error handling variables
   ok = 1;
@@ -223,122 +230,133 @@ int main(void)
   temperature_control_enabled = true; // default to cooling being on
 
   // Initialize and start CAN bus
-  printf("Starting CAN bus...\r\n");
+  PL_Log(LOG_CAN_BUS, LOG_INITIALIZING, "Starting...");
   if (!PL_CANBus_Init(&can, &hcan1))
   {
-    printf("CAN bus initialization error.\r\n");
-    Critical_Error();
+    Critical_Error(LOG_CAN_BUS, "Initialization failed.");
   }
+  PL_Log(LOG_CAN_BUS, LOG_OK, "Started.");
 
   // Initialize blink driver handler
-  printf("Starting blinking routine...\r\n");
+  PL_Log(LOG_BLINK, LOG_INITIALIZING, "Starting...");
   PL_Blink_Init(&blink, &TIM_BLINK, LD1_GPIO_Port, LD1_Pin);
   // Start blinking routine
   if (!PL_Blink_Start(&blink))
   {
-    printf("Blink start error.\r\n");
-    Critical_Error();
+    Critical_Error(LOG_BLINK, "Start error");
   }
   // Initialize blink as ready to turn LED on first time through main loop
   blink_toggle_ready = true;
+  PL_Log(LOG_BLINK, LOG_OK, "Started.");
 
   // Initialize BME280 temperature sensor
-  printf("Configuring BME280...\r\n");
+  PL_Log(LOG_TEMPERATURE_SENSOR, LOG_INITIALIZING, "Starting...");
+  PL_Log(LOG_TEMPERATURE_SENSOR, LOG_INITIALIZING, "Configuring BME280...");
   if (BME280_Config(OSRS_2, OSRS_16, OSRS_1, MODE_NORMAL, T_SB_0p5, IIR_16) != 0)
   {
-    printf("BME280 temperature sensor configuration error.\r\n");
-    Critical_Error();
+    Critical_Error(LOG_TEMPERATURE_SENSOR, "BME280 configuration failed.");
   }
+  PL_Log(LOG_TEMPERATURE_SENSOR, LOG_INITIALIZING, "Starting sample timer...");
   // Start temperature sample timer
   if (HAL_TIM_Base_Start_IT(&TIM_TEMPERATURE_SAMPLE) != HAL_OK)
   {
-    printf("Temperature sample timer start error.\r\n");
-    Critical_Error();
+    Critical_Error(LOG_TEMPERATURE_SENSOR, "Sample timer start failed.");
   }
   // Initialize BME280 sample as ready to sample first time through main loop
   BME280_sample_ready = true;
+  PL_Log(LOG_TEMPERATURE_SENSOR, LOG_OK, "Started.");
 
   // Initialize Peltier cooler PWM output
-  printf("Initializing Peltier cooler PWM output...\r\n");
+  PL_Log(LOG_PELTIER, LOG_INITIALIZING, "Initializing PWM output...");
   if (!PL_Peltier_Init(&peltier, &TIM_PELTIER_PWM, &TIM_PELTIER_REFERENCE, TIM_CHANNEL_1, TIM_CHANNEL_1))
   {
-    printf("Peltier cooler initialization error.\r\n");
-    Critical_Error();
+    Critical_Error(LOG_PELTIER, "PWM initialization failed");
   }
   // Start duty cycle at zero
-  PL_Peltier_SetCycle(&peltier, 0.0);
+  PL_Peltier_SetCycle(&peltier, PELTIER_START_CYCLE);
+  PL_Log(LOG_PELTIER, LOG_OK, "Started with %d%% duty cycle.", (int)(PELTIER_START_CYCLE * 100));
 
   // Initialize ADCs
+  PL_Log(LOG_ADC, LOG_INITIALIZING, "Starting...");
   if (!PL_ADC_Init(&adc, &hadc1, &hadc2, &hadc3, &TIM_ADC_SAMPLE, accelerometer_buffer))
   {
-    printf("ADC initialization error\r\n");
-    Critical_Error();
+    Critical_Error(LOG_ADC, "Initialization failed.");
   }
+  PL_Log(LOG_ADC, LOG_OK, "Started.");
 
+  // Initialize and start accelerometer
+  PL_Log(LOG_ACCELEROMETER, LOG_INITIALIZING, "Starting...");
   // Initialize accelerometer handler
+  PL_Log(LOG_ACCELEROMETER, LOG_INITIALIZING, "Initializing handler...");
   if (!PL_Accelerometer_Init(&accelerometer, &TIM_ACCELEROMETER_SAMPLE, ACCEL_POWER_GPIO_Port, ACCEL_POWER_Pin))
   {
-    printf("Accelerometer initialization error.\r\n");
-    Critical_Error();
+    Critical_Error(LOG_ACCELEROMETER, "Initialization failed.");
   }
+  PL_Log(LOG_ACCELEROMETER, LOG_INITIALIZING, "Powering on accelerometer and starting sampling...");
   // Start the accelerometer
   if (!PL_Accelerometer_Start(&accelerometer))
   {
-    printf("Accelerometer start error.\r\n");
-    Critical_Error();
+    Critical_Error(LOG_ACCELEROMETER, "Accelerometer start failed.");
   }
+  PL_Log(LOG_ACCELEROMETER, LOG_OK, "Started.");
 
+  // Initialize SD card
+  PL_Log(LOG_SD_CARD, LOG_INITIALIZING, "Starting...");
   // Initialize SD card handler and mount file system
-  printf("Initializing SD card...\r\n");
+  PL_Log(LOG_SD_CARD, LOG_INITIALIZING, "Initializing and mounting...");
   if (!PL_SDCard_Init(&sd_card))
   {
-    printf("SD card initialization/mount error.\r\n");
-    Critical_Error();
+    Critical_Error(LOG_SD_CARD, "Initialization/mount failed.");
   }
   // Open next log file on SD card
+  PL_Log(LOG_SD_CARD, LOG_INITIALIZING, "Opening next log file...");
   if (!PL_SDCard_Open(&sd_card))
   {
-    printf("SD card file open error.\r\n");
-    Critical_Error();
+    Critical_Error(LOG_SD_CARD, "Opening log file failed.");
   }
+  PL_Log(LOG_SD_CARD, LOG_OK, "Started.");
 
   // Start the telemetry report timer
+  PL_Log(LOG_GENERAL, LOG_INITIALIZING, "Starting telemetry report timer.");
   if (HAL_TIM_Base_Start_IT(&TIM_TELEMETRY) != HAL_OK)
   {
-    printf("Telemetry report timer start error");
-    Critical_Error();
+    Critical_Error(LOG_GENERAL, "Telemetry report timer start failed.");
   }
   // Initialize telemetry report as ready to send telemetry data first time through main loop
   telemetry_report_ready = true;
+  PL_Log(LOG_GENERAL, LOG_OK, "Telemetry report timer started.");
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  printf("Beginning main loop.\r\n");
+  PL_Log(LOG_GENERAL, LOG_OK, "Beginning main loop.");
   while (1)
   {
-	  /* Gather data before communication functions --------------------------------*/
+    /* Gather data before communication functions --------------------------------*/
     if (adc_new_sample_ready)
     {
       // Calculate values from ADC reading
       battery_voltage = PL_ADC_GetBatteryVoltage(&adc);
       cooler_current = PL_ADC_GetCoolerCurrent(&adc);
 
-      printf("Injected conversion | battery voltage: %7d mV, cooler current: %5d mA\r\n",
+      PL_Log(LOG_ADC, LOG_OK, "[Injected conversion] Battery Voltage: %7d mV | Cooler Current: %5d mA",
              (int)(1000 * battery_voltage),
              (int)(1000 * cooler_current));
 
       adc_new_sample_ready = false;
     }
-    
+
     if (BME280_sample_ready)
     {
       BME280_Measure();
-      printf("BME280 sampled. Temperature: %3d C, Pressure: %7d Pa, Humidity: %3d %%\r\n", (int) temperature, (int) pressure, (int) humidity);
+      PL_Log(LOG_TEMPERATURE_SENSOR, LOG_OK, "Temperature: %3d C | Pressure: %7d Pa | Humidity: %3d%%",
+             (int)temperature,
+             (int)pressure,
+             (int)humidity);
       BME280_sample_ready = false;
     }
 
-	  /* Communicate with the outside world and other devices ----------------------*/
+    /* Communicate with the outside world and other devices ----------------------*/
     if (accelerometer.analysis_ready)
     {
       // Write new accelerometer data to the SD card
@@ -348,12 +366,11 @@ int main(void)
                                         (uint16_t *)accelerometer.fft_buffer_y,
                                         (uint16_t *)accelerometer.fft_buffer_z))
       {
-        printf("Accelerometer packet SD card write error.\r\n");
-        Minor_Error();
+        Minor_Error(LOG_SD_CARD, "Accelerometer packet write failed.");
       }
       else
       {
-        printf("Wrote accelerometer packet to SD card.\r\n");
+        PL_Log(LOG_SD_CARD, LOG_OK, "Wrote accelerometer packet.");
       }
 
       // Perform FFT analysis (stored in amplitude buffers)
@@ -363,19 +380,27 @@ int main(void)
       peak_freq_y = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_y, &peak_amp_y);
       peak_freq_z = PL_Accelerometer_PeakFrequency(accelerometer.amplitudes_z, &peak_amp_z);
 
-      printf("peak_freq_x: %5d Hz, amp_x: %5d mV\r\n", (int)peak_freq_x, (int)(1000 * peak_amp_x));
-      printf("peak_freq_y: %5d Hz, amp_y: %5d mV\r\n", (int)peak_freq_y, (int)(1000 * peak_amp_y));
-      printf("peak_freq_z: %5d Hz, amp_z: %5d mV\r\n", (int)peak_freq_z, (int)(1000 * peak_amp_z));
+      PL_Log(LOG_ACCELEROMETER, LOG_OK,
+             "Peak Frequency X: %5d Hz | Peak Amplitude X: %5d mV",
+             (int)peak_freq_x,
+             (int)(1000 * peak_amp_x));
+      PL_Log(LOG_ACCELEROMETER, LOG_OK,
+             "Peak Frequency Y: %5d Hz | Peak Amplitude Y: %5d mV",
+             (int)peak_freq_y,
+             (int)(1000 * peak_amp_y));
+      PL_Log(LOG_ACCELEROMETER, LOG_OK,
+             "Peak Frequency Z: %5d Hz | Peak Amplitude Z: %5d mV",
+             (int)peak_freq_z,
+             (int)(1000 * peak_amp_z));
     }
 
     if (can.command_ready)
     {
       struct command com = PL_CANBus_ParseCommand(&can);
-      printf("CAN: ");
       switch (com.type)
       {
       case RESET_PAYLOAD:
-        printf("Payload reset.\r\n");
+        PL_Log(LOG_CAN_BUS, LOG_OK, "Payload reset.");
         // Reset STM32 via toggling buck reset
         HAL_GPIO_TogglePin(BUCK_GPIO_Port, BUCK_Pin);
         // Wait a short delay to ensure signal stabilizes
@@ -385,37 +410,39 @@ int main(void)
         break;
       case TOGGLE_SAMPLING:
         // Call proper accelerometer function depending on toggle parameter, then check return type
-        if (!(com.data.on ? PL_Accelerometer_Start(&accelerometer) : PL_Accelerometer_Stop(&accelerometer)))
+        if (!(com.data.on
+                  ? PL_Accelerometer_Start(&accelerometer)
+                  : PL_Accelerometer_Stop(&accelerometer)))
         {
-          printf("Error switching accelerometer to %s.\r\n", BOOL_TO_ON(com.data.on));
-          Minor_Error();
+          char msg[64];
+          snprintf(msg, sizeof(msg), "Switching accelerometer to %s failed.", BOOL_TO_ON(com.data.on));
+          Minor_Error(LOG_CAN_BUS, msg);
         }
         else
         {
-          printf("Accelerometer switched to %s.\r\n", BOOL_TO_ON(com.data.on));
+          PL_Log(LOG_CAN_BUS, LOG_OK, "Accelerometer switched to %s.", BOOL_TO_ON(com.data.on));
         }
         break;
       case TOGGLE_COOLER:
         temperature_control_enabled = com.data.on;
-        printf("Temperature control switched to %s.\r\n", BOOL_TO_ON(com.data.on));
+        PL_Log(LOG_CAN_BUS, LOG_OK, "Temperature control switched to %s.", BOOL_TO_ON(com.data.on));
         break;
       case TOGGLE_LAUNCH_MODE:
         // Launch mode doesn't do anything since we don't need it anymore
-        printf("Launch mode switched to %s.\r\n", BOOL_TO_ON(com.data.on));
+        PL_Log(LOG_CAN_BUS, LOG_OK, "Launch mode switched to %s.", BOOL_TO_ON(com.data.on));
         break;
       case LANDED:
-        printf("Landed.\r\n");
+        PL_Log(LOG_CAN_BUS, LOG_OK, "Landed.");
         break;
       case SET_TEMPERATURE:
         target_temperature = com.data.temp;
-        printf("Target temperature set to %d.\r\n", (int)target_temperature);
+        PL_Log(LOG_CAN_BUS, LOG_OK, "Target temperature set to %d.", (int)target_temperature);
         break;
       case NONE:
-        printf("No command received.\r\n");
+        PL_Log(LOG_CAN_BUS, LOG_WARNING, "No command received.");
         break;
       case INVALID:
-        printf("Invalid command received.\r\n");
-        Minor_Error();
+        Minor_Error(LOG_CAN_BUS, "Invalid command received.");
         break;
       }
     }
@@ -433,12 +460,11 @@ int main(void)
                                     humidity,
                                     battery_voltage))
       {
-        printf("Telemetry packet SD card write error.\r\n");
-        Minor_Error();
+        Minor_Error(LOG_SD_CARD, "Telemetry packet write error.");
       }
       else
       {
-        printf("Wrote telemetry packet to SD card.\r\n");
+        PL_Log(LOG_SD_CARD, LOG_OK, "Wrote telemetry packet.");
       }
 
       // Determine target temperature
@@ -473,12 +499,11 @@ int main(void)
                           (uint16_t)roundf(peak_amp_z * VIBRATION_AMPLITUDE_FACTOR),
                           HAL_GetTick()))
       {
-        printf("CAN bus send error.\r\n");
-        Minor_Error();
+        Minor_Error(LOG_CAN_BUS, "Failed to send set of three messages.");
       }
       else
       {
-        printf("Sent CAN bus messages.\r\n");
+        PL_Log(LOG_CAN_BUS, LOG_OK, "Set of three messages sent.");
       }
 
       telemetry_report_ready = false;
@@ -486,9 +511,10 @@ int main(void)
 
     if (blink_toggle_ready)
     {
+      // Only log if the light was actually blinked
       if (PL_Blink_Toggle(&blink))
       {
-        printf("Light blinked. Time: %ld\r\n", HAL_GetTick());
+        PL_Log(LOG_BLINK, LOG_OK, "Blinked.");
       }
       blink_toggle_ready = false;
     }
@@ -1272,8 +1298,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan1)
 {
   if (!PL_CANBus_Receive(&can))
   {
-    printf("Can bus receive error.");
-    Minor_Error();
+    Minor_Error(LOG_CAN_BUS, "Failed to receive message.");
   }
 }
 
@@ -1314,26 +1339,48 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
   }
 }
 
-void Critical_Error()
+void Critical_Error(enum log_category category, const char *msg)
 {
   ok = 0;
   // Turn on LD2 to indicate critical error
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-  printf("A critical error occurred.\r\n");
+  PL_Log(category, LOG_ERROR, msg);
 #if !FINAL_BUILD
   Error_Handler();
 #endif
 }
 
-void Minor_Error()
+void Minor_Error(enum log_category category, const char *msg)
 {
   if (ok)
   {
     minor_errors++;
+    /* 
+     * Color number of minor errors depending on how many occurred.
+     * < 1/3 of max -> COLOR_OK
+     * < 2/3 of max -> COLOR_WARNING
+     * < 3/3 of max -> COLOR_ERROR
+     */
+    char *err_num_color;
+    if (minor_errors < MINOR_ERRORS_MAX / 3)
+    {
+      err_num_color = COLOR_OK;
+    }
+    else if (minor_errors >= MINOR_ERRORS_MAX / 3 && minor_errors < 2 * MINOR_ERRORS_MAX / 3)
+    {
+      err_num_color = COLOR_WARNING;
+    }
+    else
+    {
+      err_num_color = COLOR_ERROR;
+    }
+    PL_Log(
+      category,
+      LOG_WARNING,
+      "[ME:%s%3d%s] %s", err_num_color, minor_errors, COLOR_RESET, msg);
     if (minor_errors >= MINOR_ERRORS_MAX)
     {
-      printf("Minor error excess.\r\n");
-      Critical_Error();
+      Critical_Error(LOG_GENERAL, "Minor error excess.");
     }
     else
     {
