@@ -41,7 +41,7 @@ extern UART_HandleTypeDef huart4;
 #define COLOR_BRIGHT_CYAN    "\x1b[96m"
 #define COLOR_WHITE          "\x1b[97m"
 
-enum log_type 
+enum log_category 
 {
    LOG_GENERAL,
    LOG_ACCELEROMETER,
@@ -54,7 +54,7 @@ enum log_type
    LOG_DEBUG = -1
 };
 
-// Log type colors
+// Log category colors
 #define COLOR_GENERAL            COLOR_NONE
 #define COLOR_ACCELEROMETER      COLOR_YELLOW
 #define COLOR_ADC                COLOR_GREEN
@@ -82,6 +82,6 @@ enum log_status
 // Provide printf function prototype to prevent implicit definition warnings
 int printf(const char *restrict format, ...);
 
-int PL_Log(enum log_type type, enum log_status status, const char *restrict format, ...);
+int PL_Log(enum log_category category, enum log_status status, const char *restrict format, ...);
 
 #endif /* INC_SERIAL_MONITOR_H_ */

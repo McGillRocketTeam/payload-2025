@@ -25,7 +25,7 @@ PUTCHAR_PROTOTYPE
   return ch;
 }
 
-int PL_Log(enum log_type type, enum log_status status, const char *restrict format, ...)
+int PL_Log(enum log_category type, enum log_status status, const char *restrict format, ...)
 {
 #if SERIAL_MONITOR_ENABLED
   // Print logging time left padded with 8 character limit
@@ -37,49 +37,49 @@ int PL_Log(enum log_type type, enum log_status status, const char *restrict form
 
   char *color;
 
-  // Print logging type
-  char *type_string;
+  // Print logging category
+  char *category_string;
   switch (type)
   {
   case LOG_GENERAL:
-    type_string = "GENERAL";
+    category_string = "GENERAL";
     color = COLOR_GENERAL; 
     break;
   case LOG_ACCELEROMETER:
-    type_string = "ACCELEROMETER";
+    category_string = "ACCELEROMETER";
     color = COLOR_ACCELEROMETER;
     break;
   case LOG_ADC:
-    type_string = "ADC";
+    category_string = "ADC";
     color = COLOR_ADC;
     break;
   case LOG_BLINK:
-    type_string = "BLINK";
+    category_string = "BLINK";
     color = COLOR_BLINK;
     break;
   case LOG_CAN_BUS:
-    type_string = "CAN BUS";
+    category_string = "CAN BUS";
     color = COLOR_CAN_BUS;
     break;
   case LOG_PELTIER:
-    type_string = "PELTIER";
+    category_string = "PELTIER";
     color = COLOR_PELTIER;
     break;
   case LOG_SD_CARD:
-    type_string = "SD CARD";
+    category_string = "SD CARD";
     color = COLOR_SD_CARD;
     break;
   case LOG_TEMPERATURE_SENSOR:
-    type_string = "TEMP SENSOR";
+    category_string = "TEMP SENSOR";
     color = COLOR_TEMPERATURE_SENSOR;
     break;
   case LOG_DEBUG:
-    type_string = "DEBUG";
+    category_string = "DEBUG";
     color = COLOR_DEBUG;
     break;
   }
   // Print log type right padded by length of longest string
-  if (printf("[%s%-13s%s] ", color, type_string, COLOR_RESET) == EOF)
+  if (printf("[%s%-13s%s] ", color, category_string, COLOR_RESET) == EOF)
   {
     // Fail early if printf failed
     return EOF;
@@ -117,7 +117,7 @@ int PL_Log(enum log_type type, enum log_status status, const char *restrict form
   va_list args;
   // `va_start` requires the last non-variadic argument
   va_start(args, format);
-  
+
   // Write string formatted by va list into the string buffer
   static char buffer[256];
   vsnprintf(buffer, sizeof(buffer), format, args);
