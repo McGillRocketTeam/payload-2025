@@ -516,7 +516,6 @@ int main(void)
       if (PL_Blink_Toggle(&blink))
       {
         PL_Log(LOG_BLINK, LOG_OK, "Blinked.");
-        Minor_Error(LOG_DEBUG, "Minor error test.");
       }
       blink_toggle_ready = false;
     }
