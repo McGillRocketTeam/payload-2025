@@ -25,9 +25,35 @@ PUTCHAR_PROTOTYPE
   return ch;
 }
 
-int PL_Log(enum log_category type, enum log_status status, const char *restrict format, ...)
+// Add categories to this array to disable them
+const enum log_category LOG_CATEGORIES_DISABLED[] = {};
+#define N_CATEGORIES_DISABLED (sizeof(LOG_CATEGORIES_DISABLED) / sizeof(enum log_category))
+
+// Add statuses to this array to disable them
+const enum log_status LOG_STATUSES_DISABLED[] = {};
+#define N_STATUSES_DISABLED (sizeof(LOG_STATUSES_DISABLED) / sizeof(enum log_status))
+
+int PL_Log(enum log_category category, enum log_status status, const char *restrict format, ...)
 {
 #if SERIAL_MONITOR_ENABLED
+  // Return early if this log category is disabled
+  for (int i = 0; i < N_CATEGORIES_DISABLED; i++)
+  {
+    if (LOG_CATEGORIES_DISABLED[i] == category)
+    {
+      return 0;
+    }
+  }
+
+  // Return early if this log status is disabled
+  for (int i = 0; i < N_STATUSES_DISABLED; i++)
+  {
+    if (LOG_STATUSES_DISABLED[i] == status)
+    {
+      return 0;
+    }
+  }
+
   // Print logging time left padded with 8 character limit
   if (printf("[%8ld] ", HAL_GetTick()) == EOF)
   {
@@ -39,7 +65,7 @@ int PL_Log(enum log_category type, enum log_status status, const char *restrict 
 
   // Print logging category
   char *category_string;
-  switch (type)
+  switch (category)
   {
   case LOG_GENERAL:
     category_string = "GENERAL";

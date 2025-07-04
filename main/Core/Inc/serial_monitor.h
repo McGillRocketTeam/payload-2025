@@ -54,6 +54,8 @@ enum log_category
    LOG_DEBUG = -1
 };
 
+const enum log_category LOG_CATGORIES_DISABLED[];
+
 // Log category colors
 #define COLOR_GENERAL            COLOR_NONE
 #define COLOR_ACCELEROMETER      COLOR_YELLOW
@@ -72,6 +74,8 @@ enum log_status
    LOG_WARNING,
    LOG_ERROR
 };
+
+const enum log_status LOG_STATUSES_DISABLED[];
 
 // Log status colors
 #define COLOR_INITIALIZING COLOR_MAGENTA
