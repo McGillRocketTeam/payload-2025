@@ -6,6 +6,8 @@
  */
 
 #include <stdarg.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include "serial_monitor.h"
 #include "enabled.h"
@@ -25,33 +27,66 @@ PUTCHAR_PROTOTYPE
     return ch;
 }
 
-// Add categories to this array to disable them
-const enum log_category LOG_CATEGORIES_DISABLED[] = {};
-#define N_CATEGORIES_DISABLED (sizeof(LOG_CATEGORIES_DISABLED) / sizeof(enum log_category))
+/*
+ * Comment out a category to filter it out. 
+ * If a category is automatically disabled because the feature is, but you don't want it to be filtered out,
+ * add it to the end.
+ */ 
+const enum log_category category_filter = 
+    LOG_GENERAL 
+// Automatically filter out disabled features.
+#if ACCELEROMETER_ENABLED
+    | LOG_ACCELEROMETER
+#endif
+#if ADC_ENABLED
+    | LOG_ADC
+#endif
+#if BLINK_ENABLED
+    | LOG_BLINK
+#endif
+#if CAN_BUS_ENABLED
+    | LOG_CAN_BUS
+#endif
+#if PELTIER_ENABLED
+    | LOG_PELTIER
+#endif
+#if SD_CARD_ENABLED
+    | LOG_SD_CARD
+#endif
+#if TEMPERATURE_SENSOR_ENABLED
+    | LOG_TEMPERATURE_SENSOR
+#endif
+    | LOG_DEBUG;
 
-// Add statuses to this array to disable them
-const enum log_status LOG_STATUSES_DISABLED[] = {};
-#define N_STATUSES_DISABLED (sizeof(LOG_STATUSES_DISABLED) / sizeof(enum log_status))
+// Remove a status from here to filter it out when logging
+const enum log_status status_filter = LOG_INITIALIZING | LOG_OK | LOG_WARNING | LOG_ERROR;
 
-int PL_Log(enum log_category category, enum log_status status, const char *restrict format, ...)
+int PL_Log(enum log_category category_primary,
+           enum log_category other_categories,
+           enum log_status status,
+           const char *restrict format,
+           ...)
 {
 #if SERIAL_MONITOR_ENABLED
-    // Return early if this log category is disabled
-    for (int i = 0; i < N_CATEGORIES_DISABLED; i++)
+    // Determine if any categories of this log message are disabled
+    bool enabled = true;
+    // Combine all categories into one
+    enum log_category categories = category_primary | other_categories;
+    // Loop through all categories
+    for (int i = 0; i < N_CATEGORIES; i++)
     {
-        if (LOG_CATEGORIES_DISABLED[i] == category)
+        // Get whether this message belongs to each category
+        if ((categories >> i) & 1)
         {
-            return 0;
+            // Stay enabled if the category filter is enabled at the same location, 
+            enabled = enabled && ((category_filter >> i) & 1);
         }
     }
-
-    // Return early if this log status is disabled
-    for (int i = 0; i < N_STATUSES_DISABLED; i++)
+    // Determine whether the status is enabled or disabled
+    enabled = enabled && (status & status_filter);
+    if (!enabled)
     {
-        if (LOG_STATUSES_DISABLED[i] == status)
-        {
-            return 0;
-        }
+        return 0;
     }
 
     // Print logging time left padded with 8 character limit
@@ -66,12 +101,14 @@ int PL_Log(enum log_category category, enum log_status status, const char *restr
         return EOF;
     }
 
+    // Next color to log in
     char *color;
 
     // Print logging category
     char *category_string;
-    switch (category)
+    switch (category_primary)
     {
+    case LOG_NONE:
     case LOG_GENERAL:
         category_string = "GENERAL";
         color = COLOR_GENERAL;

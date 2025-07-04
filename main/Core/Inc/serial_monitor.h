@@ -41,21 +41,23 @@ extern UART_HandleTypeDef huart4;
 #define COLOR_BRIGHT_CYAN    "\x1b[96m"
 #define COLOR_WHITE          "\x1b[97m"
 
-enum log_category 
+enum log_category
 {
-   LOG_GENERAL,
-   LOG_ACCELEROMETER,
-   LOG_ADC,
-   LOG_BLINK,
-   LOG_CAN_BUS,
-   LOG_PELTIER,
-   LOG_SD_CARD,
-   LOG_TEMPERATURE_SENSOR,
-   LOG_DEBUG = -1
+   LOG_GENERAL            = 0b000000001u,
+   LOG_ACCELEROMETER      = 0b000000010u,
+   LOG_ADC                = 0b000000100u,
+   LOG_BLINK              = 0b000001000u,
+   LOG_CAN_BUS            = 0b000010000u,
+   LOG_PELTIER            = 0b000100000u,
+   LOG_SD_CARD            = 0b001000000u,
+   LOG_TEMPERATURE_SENSOR = 0b010000000u,
+   LOG_DEBUG              = 0b100000000u,
+   LOG_NONE               = 0b000000000u
 };
 
-// Edit in `serial_monitor.c` to disable categories.
-extern const enum log_category LOG_CATGORIES_DISABLED[];
+#define N_CATEGORIES 9
+// To change filters, see `serial_monitor.c`.
+extern const enum log_category category_filter;
 
 // Log category colors
 #define COLOR_GENERAL            COLOR_NONE
@@ -70,14 +72,14 @@ extern const enum log_category LOG_CATGORIES_DISABLED[];
 
 enum log_status
 {
-   LOG_INITIALIZING,
-   LOG_OK,
-   LOG_WARNING,
-   LOG_ERROR
+   LOG_INITIALIZING = 0b0001u,
+   LOG_OK           = 0b0010u,
+   LOG_WARNING      = 0b0100u,
+   LOG_ERROR        = 0b1000u
 };
 
-// Edit in `serial_monitor.c` to disable statuses.
-extern const enum log_status LOG_STATUSES_DISABLED[];
+// To change filters, see `serial_monitor.c`.
+extern const enum log_status status_filter;
 
 // Log status colors
 #define COLOR_INITIALIZING COLOR_MAGENTA
@@ -88,6 +90,28 @@ extern const enum log_status LOG_STATUSES_DISABLED[];
 // Provide printf function prototype to prevent implicit definition warnings
 int printf(const char *restrict format, ...);
 
-int PL_Log(enum log_category category, enum log_status status, const char *restrict format, ...);
+/**
+ * @brief Logs the current time, primary category, status, and the formatted string to the serial monitor.
+ * Filters messages based on the bitwise filters found in `serial_monitor.c`.
+ * If any category or status of a message has its bit of the filter set to `0`, the message will be ignored.
+ * A category is automatically filtered out if the corresponding feature is disabled in `enabled.h`.
+ * @param category_primary The primary category of the message to log. This will be the one which is printed.
+ * @param other_categories Set of other categories to which this message belongs. Used for message filtering.
+ * Can be passed as a single `log_category` or as a bitwise or of multiple of them. 
+ * If no other category applies, use `LOG_NONE` or `0`.
+ * @param status The status applying to the message being logged. 
+ * Is displayed in the message as well as being used for message filtering.
+ * @param format The format string, as used in `printf`.
+ * @param ... The values used to format the string.
+ * @example ```c
+ * PL_Log(LOG_CAN_BUS, LOG_GENERAL | LOG_ACCELEROMETER, LOG_OK, "Hello %s %d!", "world", 3);
+ * PL_Log(LOG_GENERAL, LOG_NONE, LOG_INITIALIZING, "Initializing...");
+ * ```
+ */
+int PL_Log(enum log_category category_primary,
+           enum log_category other_categories,
+           enum log_status status,
+           const char *restrict format,
+           ...);
 
 #endif /* INC_SERIAL_MONITOR_H_ */
