@@ -54,7 +54,8 @@ enum log_category
    LOG_DEBUG = -1
 };
 
-const enum log_category LOG_CATGORIES_DISABLED[];
+// Edit in `serial_monitor.c` to disable categories.
+extern const enum log_category LOG_CATGORIES_DISABLED[];
 
 // Log category colors
 #define COLOR_GENERAL            COLOR_NONE
@@ -75,7 +76,8 @@ enum log_status
    LOG_ERROR
 };
 
-const enum log_status LOG_STATUSES_DISABLED[];
+// Edit in `serial_monitor.c` to disable statuses.
+extern const enum log_status LOG_STATUSES_DISABLED[];
 
 // Log status colors
 #define COLOR_INITIALIZING COLOR_MAGENTA
