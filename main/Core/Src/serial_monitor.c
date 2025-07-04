@@ -227,5 +227,7 @@ int PL_Log(enum log_category category_primary,
     {
         return chars_written + new_chars;
     }
+#else
+    return 0;
 #endif
 }
