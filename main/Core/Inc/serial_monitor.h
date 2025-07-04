@@ -103,6 +103,7 @@ int printf(const char *restrict format, ...);
  * Is displayed in the message as well as being used for message filtering.
  * @param format The format string, as used in `printf`.
  * @param ... The values used to format the string.
+ * @return Number of characters written if successful, `EOF` otherwise.
  * @example ```c
  * PL_Log(LOG_CAN_BUS, LOG_GENERAL | LOG_ACCELEROMETER, LOG_OK, "Hello %s %d!", "world", 3);
  * PL_Log(LOG_GENERAL, LOG_NONE, LOG_INITIALIZING, "Initializing...");

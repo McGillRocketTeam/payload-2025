@@ -89,17 +89,23 @@ int PL_Log(enum log_category category_primary,
         return 0;
     }
 
+    // Track number of characters written
+    int chars_written = 0;
+    int new_chars;
+
     // Print logging time left padded with 8 character limit
-    if (printf("%s[%s%8ld%s]%s ",
-               COLOR_WHITE,
-               COLOR_RESET,
-               HAL_GetTick(),
-               COLOR_WHITE,
-               COLOR_RESET) == EOF)
+    new_chars = printf("%s[%s%8ld%s]%s ",
+                       COLOR_WHITE,
+                       COLOR_RESET,
+                       HAL_GetTick(),
+                       COLOR_WHITE,
+                       COLOR_RESET);
+    if (new_chars == EOF)
     {
         // Fail early if printf failed
         return EOF;
     }
+    chars_written += new_chars;
 
     // Next color to log in
     char *color;
@@ -147,18 +153,20 @@ int PL_Log(enum log_category category_primary,
         break;
     }
     // Print log type right padded by length of longest string
-    if (printf("%s[%s%s%-13s%s%s]%s ",
-               COLOR_WHITE,
-               COLOR_RESET,
-               color,
-               category_string,
-               COLOR_RESET,
-               COLOR_WHITE,
-               COLOR_RESET) == EOF)
+    new_chars = printf("%s[%s%s%-13s%s%s]%s ",
+                       COLOR_WHITE,
+                       COLOR_RESET,
+                       color,
+                       category_string,
+                       COLOR_RESET,
+                       COLOR_WHITE,
+                       COLOR_RESET);
+    if (new_chars == EOF)
     {
         // Fail early if printf failed
         return EOF;
     }
+    chars_written += new_chars;
 
     // Print logging status
     char *status_string;
@@ -182,18 +190,20 @@ int PL_Log(enum log_category category_primary,
         break;
     }
     // Print log status right padded by length of longest string
-    if (printf("%s[%s%s%-5s%s%s]%s ",
-               COLOR_WHITE,
-               COLOR_RESET,
-               color,
-               status_string,
-               COLOR_RESET,
-               COLOR_WHITE,
-               COLOR_RESET) == EOF)
+    new_chars = printf("%s[%s%s%-5s%s%s]%s ",
+                       COLOR_WHITE,
+                       COLOR_RESET,
+                       color,
+                       status_string,
+                       COLOR_RESET,
+                       COLOR_WHITE,
+                       COLOR_RESET);
+    if (new_chars == EOF)
     {
         // Fail early if printf failed
         return EOF;
     }
+    chars_written += new_chars;
 
     // Initialize variable arg list
     va_list args;
@@ -207,7 +217,15 @@ int PL_Log(enum log_category category_primary,
     // Release `va_list`
     va_end(args);
 
-    // Print formatted message and newline, return success
-    return printf("%s\r\n", buffer);
+    // Print formatted message
+    new_chars = printf("%s\r\n", buffer);
+    if (new_chars == EOF)
+    {
+        return EOF;
+    }
+    else
+    {
+        return chars_written + new_chars;
+    }
 #endif
 }
