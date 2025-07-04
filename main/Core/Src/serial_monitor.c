@@ -25,17 +25,13 @@ PUTCHAR_PROTOTYPE
   return ch;
 }
 
-int PL_Log(const char *restrict format, enum log_type type, enum log_status status, ...)
+int PL_Log(enum log_type type, enum log_status status, const char *restrict format, ...)
 {
 #if SERIAL_MONITOR_ENABLED
-  // Initialize variable arg list
-  va_list args;
-  // `va_start` requires the last non-variadic argument
-  va_start(args, status);
-
-  // Print logging time
-  if (printf("[%10ld] ", HAL_GetTick()) == EOF)
+  // Print logging time left padded with 8 character limit
+  if (printf("[%8ld] ", HAL_GetTick()) == EOF)
   {
+    // Fail early if printf failed
     return EOF;
   }
 
@@ -82,8 +78,10 @@ int PL_Log(const char *restrict format, enum log_type type, enum log_status stat
     color = COLOR_DEBUG;
     break;
   }
-  if (printf("[%s%-15s%s] ", color, type_string, COLOR_RESET) == EOF)
+  // Print log type right padded by length of longest string
+  if (printf("[%s%-13s%s] ", color, type_string, COLOR_RESET) == EOF)
   {
+    // Fail early if printf failed
     return EOF;
   }
 
@@ -100,7 +98,7 @@ int PL_Log(const char *restrict format, enum log_type type, enum log_status stat
     color = COLOR_OK;
     break;
   case LOG_WARNING:
-    status_string = "WARNING";
+    status_string = "WARN";
     color = COLOR_WARNING;
     break;
   case LOG_ERROR:
@@ -108,11 +106,18 @@ int PL_Log(const char *restrict format, enum log_type type, enum log_status stat
     color = COLOR_ERROR;
     break;
   }
+  // Print log status right padded by length of longest string
   if (printf("[%s%-5s%s] ", color, status_string, COLOR_RESET) == EOF)
   {
+    // Fail early if printf failed
     return EOF;
   }
 
+  // Initialize variable arg list
+  va_list args;
+  // `va_start` requires the last non-variadic argument
+  va_start(args, format);
+  
   // Write string formatted by va list into the string buffer
   static char buffer[256];
   vsnprintf(buffer, sizeof(buffer), format, args);
@@ -120,7 +125,7 @@ int PL_Log(const char *restrict format, enum log_type type, enum log_status stat
   // Release `va_list`
   va_end(args);
 
-  // Print formatted message and newline
+  // Print formatted message and newline, return success
   return printf("%s\r\n", buffer);
 #endif
 }
