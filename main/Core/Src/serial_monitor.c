@@ -32,7 +32,7 @@ PUTCHAR_PROTOTYPE
  * If a category is automatically disabled because the feature is, but you don't want it to be filtered out,
  * add it to the end.
  */ 
-const enum log_category category_filter = 
+const enum log_category CATEGORY_FILTER = 
     LOG_GENERAL 
 // Automatically filter out disabled features.
 #if ACCELEROMETER_ENABLED
@@ -59,7 +59,7 @@ const enum log_category category_filter =
     | LOG_DEBUG;
 
 // Remove a status from here to filter it out when logging
-const enum log_status status_filter = LOG_INITIALIZING | LOG_OK | LOG_WARNING | LOG_ERROR;
+const enum log_status STATUS_FILTER = LOG_INITIALIZING | LOG_OK | LOG_WARNING | LOG_ERROR;
 
 int PL_Log(enum log_category category_primary,
            enum log_category other_categories,
@@ -75,19 +75,19 @@ int PL_Log(enum log_category category_primary,
 #if FILTER_MODE == FILTER_MODE_LENIENT
     // Checks if any bits (categories) are still enabled after being put through the filter
     // True if any categories of this message are enabled
-    enabled = categories & category_filter;
+    enabled = categories & CATEGORY_FILTER;
 #elif FILTER_MODE == FILTER_MODE_STRICT
     // Checks if the bits (categories) are unchanged after being put through the filter
     // True if all categories of this message are enabled
-    enabled = (categories & category_filter) == categories;
+    enabled = (categories & CATEGORY_FILTER) == categories;
 #elif FILTER_MODE == FILTER_MODE_PRIMARY
     // Checks if the primary category's bit is enabled in the filter
     // True if the primary category is enabled
-    enabled = category_primary & category_filter;
+    enabled = category_primary & CATEGORY_FILTER;
 #endif
 
     // Determine whether the status is enabled or disabled
-    enabled = enabled && (status & status_filter);
+    enabled = enabled && (status & STATUS_FILTER);
 
     // Ignore this message if enabled
     if (!enabled)

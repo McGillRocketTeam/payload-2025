@@ -80,7 +80,7 @@ enum log_category
 #define N_CATEGORIES (0 ID_ENUM(COUNT) - 1)
 
 // To change filters, see `serial_monitor.c`.
-extern const enum log_category category_filter;
+extern const enum log_category CATEGORY_FILTER;
 
 // Log category colors
 #define COLOR_GENERAL            COLOR_NONE
@@ -102,7 +102,7 @@ enum log_status
 };
 
 // To change filters, see `serial_monitor.c`.
-extern const enum log_status status_filter;
+extern const enum log_status STATUS_FILTER;
 
 // Log status colors
 #define COLOR_INITIALIZING COLOR_MAGENTA
