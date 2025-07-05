@@ -437,6 +437,24 @@ int main(void)
         break;
       case LANDED:
         PL_Log(LOG_CAN_BUS, LOG_GENERAL, LOG_OK, "Landed.");
+        if (!PL_Accelerometer_Stop(&accelerometer))
+        {
+          Minor_Error(LOG_ACCELEROMETER,
+                      "Failed to shut down and stop sampling accelerometers on landing.");
+        }
+        else
+        {
+          PL_Log(LOG_ACCELEROMETER, LOG_CAN_BUS, LOG_OK,
+                 "Powered off and stopped sampling accelerometers on landing.");
+        }
+        if (!PL_Blink_Stop(&blink))
+        {
+          Minor_Error(LOG_BLINK, "Failed to stop blinking on landing.");
+        }
+        else
+        {
+          PL_Log(LOG_BLINK, LOG_CAN_BUS, LOG_OK, "Stopped blinking on landing.");
+        }
         break;
       case SET_TEMPERATURE:
         target_temperature = com.data.temp;
