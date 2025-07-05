@@ -17,6 +17,7 @@ void PL_Blink_Init(PL_Blink_Handler *blink, TIM_HandleTypeDef *htim, GPIO_TypeDe
     blink->port = port;
     blink->pin = pin;
     blink->count = 0;
+    blink->start_time = HAL_GetTick();
 #endif
 }
 
@@ -50,7 +51,7 @@ bool PL_Blink_Toggle(PL_Blink_Handler *blink)
 {
 #if BLINK_ENABLED
 #if FINAL_BUILD
-    if (HAL_GetTick() <= INIT_BLINK_TIME)
+    if (HAL_GetTick() - blink->start_time <= INIT_BLINK_TIME)
     {
     	// Blink fast (every time this function is called)
         HAL_GPIO_TogglePin(blink->port, blink->pin);

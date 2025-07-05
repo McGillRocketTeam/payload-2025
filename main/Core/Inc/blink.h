@@ -19,6 +19,7 @@ typedef struct {
     GPIO_TypeDef *port;  // Pointer to the GPIO port
     uint16_t pin;        // GPIO pin number
     uint8_t count; // Counter for the number of blinks
+    uint32_t start_time;
 } PL_Blink_Handler;
 
 /**

@@ -237,18 +237,6 @@ int main(void)
   }
   PL_Log(LOG_CAN_BUS, LOG_NONE, LOG_OK, "Started.");
 
-  // Initialize blink driver handler
-  PL_Log(LOG_BLINK, LOG_NONE, LOG_INITIALIZING, "Starting...");
-  PL_Blink_Init(&blink, &TIM_BLINK, LD1_GPIO_Port, LD1_Pin);
-  // Start blinking routine
-  if (!PL_Blink_Start(&blink))
-  {
-    Critical_Error(LOG_BLINK, "Start error");
-  }
-  // Initialize blink as ready to turn LED on first time through main loop
-  blink_toggle_ready = true;
-  PL_Log(LOG_BLINK, LOG_NONE, LOG_OK, "Started.");
-
   // Initialize BME280 temperature sensor
   PL_Log(LOG_TEMPERATURE_SENSOR, LOG_NONE, LOG_INITIALIZING, "Starting...");
   PL_Log(LOG_TEMPERATURE_SENSOR, LOG_NONE, LOG_INITIALIZING, "Configuring BME280...");
@@ -325,6 +313,18 @@ int main(void)
   // Initialize telemetry report as ready to send telemetry data first time through main loop
   telemetry_report_ready = true;
   PL_Log(LOG_GENERAL, LOG_NONE, LOG_OK, "Telemetry report timer started.");
+
+  // Initialize blink driver handler
+  PL_Log(LOG_BLINK, LOG_NONE, LOG_INITIALIZING, "Starting...");
+  PL_Blink_Init(&blink, &TIM_BLINK, LD1_GPIO_Port, LD1_Pin);
+  // Start blinking routine
+  if (!PL_Blink_Start(&blink))
+  {
+    Critical_Error(LOG_BLINK, "Start error");
+  }
+  // Initialize blink as ready to turn LED on first time through main loop
+  blink_toggle_ready = true;
+  PL_Log(LOG_BLINK, LOG_NONE, LOG_OK, "Started.");
   /* USER CODE END 2 */
 
   /* Infinite loop */
