@@ -41,6 +41,18 @@ extern UART_HandleTypeDef huart4;
 #define COLOR_BRIGHT_CYAN    "\x1b[96m"
 #define COLOR_WHITE          "\x1b[97m"
 
+// Logging category filter modes
+
+// A message will be ignored if ALL categories it belongs to are disabled.
+#define FILTER_MODE_LENIENT 0
+// A message will be ignored if ANY categories it belongs to are disabled.
+#define FILTER_MODE_STRICT 1
+// A message will be ignored if its PRIMARY category is disabled. This essentially ignores all other categories.
+#define FILTER_MODE_PRIMARY 2
+
+// The filter mode to use
+#define FILTER_MODE FILTER_MODE_STRICT
+
 // XMacro to perform a macro on each element of the enum
 #define ID_ENUM(X)                          \
     X(LOG_GENERAL, 0b000000001u)            \
@@ -103,9 +115,9 @@ int printf(const char *restrict format, ...);
 
 /**
  * @brief Logs the current time, primary category, status, and the formatted string to the serial monitor.
- * Filters messages based on the bitwise filters found in `serial_monitor.c`.
- * If any category or status of a message has its bit of the filter set to `0`, the message will be ignored.
- * A category is automatically filtered out if the corresponding feature is disabled in `enabled.h`.
+ * Filters messages based on the bitwise filters found in `serial_monitor.c` and the `FILTER_MODE`.
+ * See `FILTER_MODE_LENIENT`, `FILTER_MODE_STRICT`, and `FILTER_MODE_PRIMARY` for details.
+ * A category is automatically set to be filtered out if the corresponding feature is disabled in `enabled.h`.
  * @param category_primary The primary category of the message to log. This will be the one which is printed.
  * @param other_categories Set of other categories to which this message belongs. Used for message filtering.
  * Can be passed as a single `log_category` or as a bitwise or of multiple of them.

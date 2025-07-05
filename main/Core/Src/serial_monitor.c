@@ -68,22 +68,28 @@ int PL_Log(enum log_category category_primary,
            ...)
 {
 #if SERIAL_MONITOR_ENABLED
-    // Determine if any categories of this log message are disabled
-    bool enabled = true;
+    // Determine whether this message should be logged or ignored
+    bool enabled;
     // Combine all categories into one
     enum log_category categories = category_primary | other_categories;
-    // Loop through all categories
-    for (int i = 0; i < N_CATEGORIES; i++)
-    {
-        // Get whether this message belongs to each category
-        if ((categories >> i) & 1)
-        {
-            // Stay enabled if the category filter is enabled at the same location, 
-            enabled = enabled && ((category_filter >> i) & 1);
-        }
-    }
+#if FILTER_MODE == FILTER_MODE_LENIENT
+    // Checks if any bits (categories) are still enabled after being put through the filter
+    // True if any categories of this message are enabled
+    enabled = categories & category_filter;
+#elif FILTER_MODE == FILTER_MODE_STRICT
+    // Checks if the bits (categories) are unchanged after being put through the filter
+    // True if all categories of this message are enabled
+    enabled = (categories & category_filter) == categories;
+#elif FILTER_MODE == FILTER_MODE_PRIMARY
+    // Checks if the primary category's bit is enabled in the filter
+    // True if the primary category is enabled
+    enabled = category_primary & category_filter;
+#endif
+
     // Determine whether the status is enabled or disabled
     enabled = enabled && (status & status_filter);
+
+    // Ignore this message if enabled
     if (!enabled)
     {
         return 0;
