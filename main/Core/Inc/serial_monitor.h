@@ -83,10 +83,10 @@ extern const enum log_category CATEGORY_FILTER;
 
 enum log_status
 {
-   LOG_INITIALIZING = 0b0001u,
-   LOG_OK           = 0b0010u,
-   LOG_WARNING      = 0b0100u,
-   LOG_ERROR        = 0b1000u
+    LOG_INITIALIZING = 0b0001u,
+    LOG_OK           = 0b0010u,
+    LOG_WARNING      = 0b0100u,
+    LOG_ERROR        = 0b1000u
 };
 
 // To change filters, see `serial_monitor.c`.
@@ -106,9 +106,15 @@ int printf(const char *restrict format, ...);
  * Filters messages based on the bitwise filters found in `serial_monitor.c` and the `FILTER_MODE`.
  * See `FILTER_MODE_LENIENT`, `FILTER_MODE_STRICT`, and `FILTER_MODE_PRIMARY` for details.
  * A category is automatically set to be filtered out if the corresponding feature is disabled in `enabled.h`.
+ * 
+ * Example:
+ * ```c
+ * PL_Log(LOG_CAN_BUS, LOG_GENERAL | LOG_ACCELEROMETER, LOG_OK, "Hello %s %d!", "world", 3);
+ * PL_Log(LOG_GENERAL, LOG_NONE, LOG_INITIALIZING, "Initializing...");
+ * ```
  * @param category_primary The primary category of the message to log. This will be the one which is printed.
  * @param other_categories Set of other categories to which this message belongs. Used for message filtering.
- * Can be passed as a single `log_category` or as a bitwise or of multiple of them.
+ * Can be passed as a single `log_category` or as a bitwise `or` of multiple of them.
  * If no other category applies, use `LOG_NONE` or `0`.
  * @param status The status applying to the message being logged.
  * Is displayed in the message as well as being used for message filtering.
