@@ -53,31 +53,19 @@ extern UART_HandleTypeDef huart4;
 // The filter mode to use
 #define FILTER_MODE FILTER_MODE_STRICT
 
-// XMacro to perform a macro on each element of the enum
-#define ID_ENUM(X)                          \
-    X(LOG_GENERAL, 0b000000001u)            \
-    X(LOG_ACCELEROMETER, 0b000000010u)      \
-    X(LOG_ADC, 0b000000100u)                \
-    X(LOG_BLINK, 0b000001000u)              \
-    X(LOG_CAN_BUS, 0b000010000u)            \
-    X(LOG_PELTIER, 0b000100000u)            \
-    X(LOG_SD_CARD, 0b001000000u)            \
-    X(LOG_TEMPERATURE_SENSOR, 0b010000000u) \
-    X(LOG_DEBUG, 0b100000000u)              \
-    X(LOG_NONE, 0b000000000u)
-
-// Macro to assign each ID to a value
-#define ASSIGN(id, val) id = val,
 enum log_category
 {
-    // Build enum
-    ID_ENUM(ASSIGN)
+    LOG_GENERAL            = 0b000000001u,
+    LOG_ACCELEROMETER      = 0b000000010u,
+    LOG_ADC                = 0b000000100u,
+    LOG_BLINK              = 0b000001000u,
+    LOG_CAN_BUS            = 0b000010000u,
+    LOG_PELTIER            = 0b000100000u,
+    LOG_SD_CARD            = 0b001000000u,
+    LOG_TEMPERATURE_SENSOR = 0b010000000u,
+    LOG_DEBUG              = 0b100000000u,
+    LOG_NONE               = 0b000000000u
 };
-
-// Macro to count the number of categories in the enum
-#define COUNT(id, val) +1
-// Count number of categories (-1 since `LOG_NONE` should not count as a category)
-#define N_CATEGORIES (0 ID_ENUM(COUNT) - 1)
 
 // To change filters, see `serial_monitor.c`.
 extern const enum log_category CATEGORY_FILTER;
