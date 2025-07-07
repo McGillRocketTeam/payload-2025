@@ -52,11 +52,11 @@ If you find any good tutorials or references, link pages or YouTube videos in th
 If you downloaded/added any external code or drivers, put a link to where you got them and where they are currently implemented in the test.
 Once you're satisfied with the test, [make a pull request](#branches) in the GitHub repository and the branch will be merged with main.
 
-## [Scripts](./scripts/)
+## [Utils](./utils/)
 
-This folder contains smaller, usually self-contained programs which can be run as scripts.
+This folder contains programs peripheral to the main code for the flight computer. They are usually smaller, self-contained programs which can be run as scripts.
 
-These will mostly be used for analysis of the data gathered from the SD card during flight or during tests.
+These will mostly be used for analysis of the data gathered from the SD card during flight or during tests, but also contain things like the AV CAN bus emulator used for testing.
 
 # Branches
 
