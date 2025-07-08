@@ -59,11 +59,20 @@
 #define BATTERY_VOLTAGE_SEND_MAX 21.0f // Volts
 #define BATTERY_VOLTAGE_SEND_FACTOR 256 // 2^8 is the maximum value for a uint8
 #define VIBRATION_AMPLITUDE_FACTOR 10000 // Send amplitude in mV * 10 to take advantage of the precision
-
-#define PELTIER_START_CYCLE 0.0f
+// PID constants
+#define K_P           0.0f // Proportional gain constant
+#define K_I           0.0f // Integral gain constant
+#define K_D           0.0f // Derivative gain constant
+#define K_AW          0.0f // Anti-windup gain constant
+#define TIME_CONST    0.0f // Time constant for derivative filtering
+#define PID_MAX       1.0f // Max command
+#define PID_MIN       0.0f // Min command
+#define PID_MAX_DERIV 0.0f // Max rate of change of command
 // Error handling constants
 #define MINOR_ERRORS_MAX 128
 #define MINOR_ERROR_BLINK_TIME 100 // milliseconds
+// Other
+#define PELTIER_START_CYCLE 0.0f
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -101,6 +110,8 @@ PL_Blink_Handler blink;
 PL_CANBus_Handler can;
 PL_Peltier_Handler peltier;
 PL_SDCard_Handler sd_card;
+// PID controller struct
+struct PID pid;
 
 // Accelerometer buffer which DMA will write to. Needs to be shared a bit, so declared in main.
 volatile uint16_t accelerometer_buffer[ACCELEROMETER_SAMPLE_SIZE_TRIPLE];
@@ -230,6 +241,16 @@ int main(void)
   target_temperature = TEMPERATURES[0]; // default to coldest temperature
   temperature_control_enabled = true; // default to cooling being on
 
+  // Initialize PID struct
+  pid.Kp = K_P;
+  pid.Ki = K_I;
+  pid.Kd = K_D;
+  pid.Kaw = K_AW;
+  pid.T_C = TIME_CONST;
+  pid.max = PID_MAX;
+  pid.min = PID_MIN;
+  pid.max_rate = PID_MAX_DERIV;
+
   // Initialize and start CAN bus
   PL_Log(LOG_CAN_BUS, LOG_NONE, LOG_INITIALIZING, "Starting...");
   if (!PL_CANBus_Init(&can, &hcan1))
@@ -356,6 +377,18 @@ int main(void)
              (int)pressure,
              (int)humidity);
       BME280_sample_ready = false;
+    }
+
+    // Step PID controller
+    if (temperature_control_enabled)
+    {
+      // Calculate Peltier duty cycle using PID controller
+      float peltier_cycle = PID_step(&pid, temperature, target_temperature, HAL_GetTick());
+      // Set Peltier duty cycle
+      PL_Peltier_SetCycle(&peltier, peltier_cycle);
+      PL_Log(LOG_PELTIER, LOG_NONE, LOG_OK,
+             "Peltier duty cycle set to %d%%.",
+             (int)(100 * peltier_cycle));
     }
 
     /* Communicate with the outside world and other devices ----------------------*/
