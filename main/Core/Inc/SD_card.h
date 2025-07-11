@@ -9,6 +9,7 @@
 #define INC_SD_CARD_H_
 
 #include <stdbool.h>
+#include <stdio.h>
 #include "fatfs.h"
 #include "accelerometer.h"
 
@@ -26,7 +27,7 @@
  * At our current sampling rate, this flushes about every 4-5 seconds.
  */
 #define SD_FLUSH_BYTES 262144 // 2^18 bytes
-// FATFS limits file name length 
+// FATFS limits file name length
 #define SD_FILE_NAME_MAX_LENGTH 12
 
 typedef struct
@@ -117,5 +118,11 @@ bool PL_SDCard_WriteAccelerometer(
     uint16_t x_buffer[FFT_SIZE_SINGLE],
     uint16_t y_buffer[FFT_SIZE_SINGLE],
     uint16_t z_buffer[FFT_SIZE_SINGLE]);
+
+bool parse_sd_binary_to_csv(
+    FIL *file,
+    FIL *telemetry_csv_file,
+    FIL *accelerometer_csv_file,
+    float sampling_rate);
 
 #endif /* INC_SD_CARD_H_ */
