@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
                 READ_ERROR("header")
 
             // Accelerometer packet
-            if (memcmp(&header, HEADER_ACCELEROMETER, PACKET_HEADER_LENGTH) == 0)
+            if (strncmp(header, HEADER_ACCELEROMETER, PACKET_HEADER_LENGTH) == 0)
             {
                 // Header valid
                 bytes_valid += PACKET_HEADER_LENGTH;
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
                 }
             }
             // Telemetry packet
-            else if (memcmp(&header, HEADER_TELEMETRY, PACKET_HEADER_LENGTH) == 0)
+            else if (strncmp(header, HEADER_TELEMETRY, PACKET_HEADER_LENGTH) == 0)
             {
                 // Header valid
                 bytes_valid += PACKET_HEADER_LENGTH;
