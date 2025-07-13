@@ -15,9 +15,11 @@
 #define CSV_HEADER_TELEMETRY "time,ok,sampling_state,temp_control_state,\
 target_temp,current_temp,current_pressure,current_humidity,battery_voltage\n"
 
-#define FILE_NAME_FORMAT_DATA "DATA%d.PLD"
-#define FILE_NAME_FORMAT_ACCELEROMETER "%d_accelerometer.csv"
-#define FILE_NAME_FORMAT_TELEMETRY "%d_telemetry.csv"
+#define FILE_NAME_BASE "DATA"
+#define FILE_NAME_EXTENSION ".PLD"
+#define FILE_NAME_FORMAT_DATA (FILE_NAME_BASE "%d" FILE_NAME_EXTENSION)
+#define FILE_NAME_FORMAT_ACCELEROMETER "%s_accelerometer.csv"
+#define FILE_NAME_FORMAT_TELEMETRY "%s_telemetry.csv"
 
 typedef struct __attribute__((packed))
 {

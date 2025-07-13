@@ -23,10 +23,23 @@ int main(int argc, char *argv[])
     // Process each input file
     for (int i = 1; i < argc; i++)
     {
+        char *name = basename(argv[i]);
+
         // Ensure the file name is valid
-        // Also gets file number, assuming the file name is in the format "dataN.pld"
-        int file_number;
-        if (1 != sscanf(basename(argv[i]), FILE_NAME_FORMAT_DATA, &file_number))
+        char file_prefix[32];
+        // Find extension location
+        int extension_location = strlen(name) - (sizeof(FILE_NAME_EXTENSION) - 1);
+        // Check if the file name ends with the expected extension
+        if (0 == strncmp(name + (extension_location),
+                         FILE_NAME_EXTENSION,
+                         sizeof(FILE_NAME_EXTENSION) - 1))
+        {
+            // Set the file prefix to the name without the extension
+            int prefix_size = sizeof(file_prefix) - 1;
+            // Ensure we do not overflow the prefix size by choosing the minimum
+            strncpy(file_prefix, name, prefix_size < extension_location ? prefix_size : extension_location);
+        }
+        else
         {
             fprintf(stderr, "Invalid file format: %s\n", argv[i]);
             continue;
@@ -44,10 +57,10 @@ int main(int argc, char *argv[])
         char csv_filename[128];
         char *dir = dirname(argv[i]);
         // Accelerometer CSV file
-        snprintf(csv_filename, sizeof(csv_filename), "%s/" FILE_NAME_FORMAT_ACCELEROMETER, dir, file_number);
+        snprintf(csv_filename, sizeof(csv_filename), "%s/" FILE_NAME_FORMAT_ACCELEROMETER, dir, file_prefix);
         FILE *csv_accel = fopen(csv_filename, "w+");
         // Telemetry CSV file
-        snprintf(csv_filename, sizeof(csv_filename), "%s/" FILE_NAME_FORMAT_TELEMETRY, dir, file_number);
+        snprintf(csv_filename, sizeof(csv_filename), "%s/" FILE_NAME_FORMAT_TELEMETRY, dir, file_prefix);
         FILE *csv_telemetry = fopen(csv_filename, "w+");
 
         // Write CSV headers
@@ -89,7 +102,7 @@ int main(int argc, char *argv[])
                     if (fprintf(csv_accel, "%f,%d,%d,%d\n",
                                 packet.time_elapsed +
                                     // TODO: Investigate the time extrapolation
-                                    ((j - (FFT_SIZE_SINGLE - 1)) * (1 / SAMPLING_RATE * 1000)), 
+                                    ((j - (FFT_SIZE_SINGLE - 1)) * (1 / SAMPLING_RATE * 1000)),
                                 packet.x_buffer[j],
                                 packet.y_buffer[j],
                                 packet.z_buffer[j]) < 0)
