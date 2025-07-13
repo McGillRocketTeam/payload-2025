@@ -37,7 +37,6 @@ int main(int argc, char *argv[])
         if (!file_data)
         {
             fprintf(stderr, "Error opening file: %s\n", argv[i]);
-            fclose(file_data);
             continue;
         }
 
