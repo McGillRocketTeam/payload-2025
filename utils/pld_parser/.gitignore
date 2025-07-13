@@ -1,0 +1,5 @@
+# PLD parser binary, UNIX and windows
+parse
+parse.exe
+# Parsed CSV files
+*.csv
