@@ -7,7 +7,7 @@
     {                                                                           \
         if (!feof(file_data))                                                   \
         {                                                                       \
-            fprintf(stderr, "Error reading %s from file: %s\n", what, argv[i]); \
+            fprintf(stderr, "Error reading " what " from file: %s\n", argv[i]); \
         }                                                                       \
         break;                                                                  \
     }
@@ -42,14 +42,13 @@ int main(int argc, char *argv[])
         }
 
         // Create CSV files
-        char csv_filename[32];
-
+        char csv_filename[128];
+        char *dir = dirname(argv[i]);
         // Accelerometer CSV file
-        snprintf(csv_filename, sizeof(csv_filename), FILE_NAME_FORMAT_ACCELEROMETER, file_number);
+        snprintf(csv_filename, sizeof(csv_filename), "%s/" FILE_NAME_FORMAT_ACCELEROMETER, dir, file_number);
         FILE *csv_accel = fopen(csv_filename, "w+");
-
         // Telemetry CSV file
-        snprintf(csv_filename, sizeof(csv_filename), FILE_NAME_FORMAT_TELEMETRY, file_number);
+        snprintf(csv_filename, sizeof(csv_filename), "%s/" FILE_NAME_FORMAT_TELEMETRY, dir, file_number);
         FILE *csv_telemetry = fopen(csv_filename, "w+");
 
         // Write CSV headers
@@ -89,7 +88,9 @@ int main(int argc, char *argv[])
                 for (int j = 0; j < FFT_SIZE_SINGLE; j++)
                 {
                     if (fprintf(csv_accel, "%f,%d,%d,%d\n",
-                                packet.time_elapsed + ((j - (FFT_SIZE_SINGLE - 1)) * (1 / SAMPLING_RATE * 1000)), // TODO: Investigate the time extrapolation
+                                packet.time_elapsed +
+                                    // TODO: Investigate the time extrapolation
+                                    ((j - (FFT_SIZE_SINGLE - 1)) * (1 / SAMPLING_RATE * 1000)), 
                                 packet.x_buffer[j],
                                 packet.y_buffer[j],
                                 packet.z_buffer[j]) < 0)

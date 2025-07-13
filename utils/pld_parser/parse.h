@@ -12,11 +12,12 @@
 #define PACKET_HEADER_LENGTH 4
 
 #define CSV_HEADER_ACCELEROMETER "time,x,y,z\n"
-#define CSV_HEADER_TELEMETRY "time,ok,sampling_state,temp_control_state,target_temp,current_temp,current_pressure,current_humidity,battery_voltage\n"
+#define CSV_HEADER_TELEMETRY "time,ok,sampling_state,temp_control_state,\
+target_temp,current_temp,current_pressure,current_humidity,battery_voltage\n"
 
 #define FILE_NAME_FORMAT_DATA "DATA%d.PLD"
-#define FILE_NAME_FORMAT_ACCELEROMETER "accelerometer%d.csv"
-#define FILE_NAME_FORMAT_TELEMETRY "telemetry%d.csv"
+#define FILE_NAME_FORMAT_ACCELEROMETER "%d_accelerometer.csv"
+#define FILE_NAME_FORMAT_TELEMETRY "%d_telemetry.csv"
 
 typedef struct __attribute__((packed))
 {
