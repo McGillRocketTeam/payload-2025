@@ -153,9 +153,25 @@ int main(int argc, char *argv[])
         long file_size = ftell(file_data);
         char bytes_valid_buffer[32];
         snprintf(bytes_valid_buffer, sizeof(bytes_valid_buffer), "%ld", file_size);
-        printf("Finished file %s: %.1f%% (%*d/%s bytes) valid\n",
+        float bytes_valid_percentage = (float)bytes_valid / file_size * 100;
+        // Decide colors
+        char *color;
+        if (bytes_valid_percentage > 97.5f)
+        {
+            color = COLOR_BRIGHT_GREEN;
+        }
+        else if (bytes_valid_percentage > 95.0f)
+        {
+            color = COLOR_BRIGHT_YELLOW;
+        }
+        else
+        {
+            color = COLOR_BRIGHT_RED;
+        }
+        printf("Finished file %s: \t%s%5.1f%%" COLOR_RESET " \t(%*d/%s bytes) valid\n",
                argv[i],
-               (float)bytes_valid / file_size * 100,
+               color,
+               bytes_valid_percentage,
                (int)strlen(bytes_valid_buffer),
                bytes_valid,
                bytes_valid_buffer);
