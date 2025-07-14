@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
         }
 
         // Open file
-        FILE *file_data = fopen(argv[i], "r");
+        FILE *file_data = fopen(argv[i], "rb");
         if (!file_data)
         {
             fprintf(stderr, "Error opening file: %s\n", argv[i]);
