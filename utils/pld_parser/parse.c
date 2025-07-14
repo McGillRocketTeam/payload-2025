@@ -32,7 +32,8 @@ int main(int argc, char *argv[])
         char *dir = dirname(path);
 
         // Ensure the file name is valid
-        char file_prefix[32];
+        // Initialize to zero to ensure termination
+        char file_prefix[32] = {0};
         // Find extension location
         int extension_location = strlen(name) - (sizeof(FILE_NAME_EXTENSION) - 1);
         // Check if the file name ends with the expected extension
