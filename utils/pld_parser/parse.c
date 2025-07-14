@@ -23,7 +23,13 @@ int main(int argc, char *argv[])
     // Process each input file
     for (int i = 1; i < argc; i++)
     {
-        char *name = basename(argv[i]);
+        // Copy of file path to pass to `basename` and `dirname`
+        // Initialize to zero to ensure termination
+        char path[256] = {0};
+        strncpy(path, argv[i], sizeof(path) - 1);
+        // Get base and directory names
+        char *name = basename(path);
+        char *dir = dirname(path);
 
         // Ensure the file name is valid
         char file_prefix[32];
@@ -54,8 +60,7 @@ int main(int argc, char *argv[])
         }
 
         // Create CSV files
-        char csv_filename[128];
-        char *dir = dirname(argv[i]);
+        char csv_filename[256];
         // Accelerometer CSV file
         snprintf(csv_filename, sizeof(csv_filename), "%s/" FILE_NAME_FORMAT_ACCELEROMETER, dir, file_prefix);
         FILE *csv_accel = fopen(csv_filename, "w+");
