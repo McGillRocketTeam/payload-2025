@@ -3,13 +3,13 @@
 #include <string.h>
 #include <libgen.h>
 
-#define READ_ERROR(what)                                                        \
-    {                                                                           \
-        if (!feof(file_data))                                                   \
-        {                                                                       \
-            fprintf(stderr, "Error reading " what " from file: %s\n", argv[i]); \
-        }                                                                       \
-        break;                                                                  \
+#define READ_ERROR(what)                                                                         \
+    {                                                                                            \
+        if (!feof(file_data))                                                                    \
+        {                                                                                        \
+            fprintf(stderr, COLOR_RED "Error reading " what COLOR_RESET " from: %s\n", argv[i]); \
+        }                                                                                        \
+        break;                                                                                   \
     }
 
 int main(int argc, char *argv[])
@@ -37,8 +37,8 @@ int main(int argc, char *argv[])
         int extension_location = strlen(name) - (sizeof(FILE_NAME_EXTENSION) - 1);
         // Check if the file name ends with the expected extension
         if (0 == strncasecmp(name + (extension_location),
-                         FILE_NAME_EXTENSION,
-                         sizeof(FILE_NAME_EXTENSION) - 1))
+                             FILE_NAME_EXTENSION,
+                             sizeof(FILE_NAME_EXTENSION) - 1))
         {
             // Set the file prefix to the name without the extension
             int prefix_size = sizeof(file_prefix) - 1;
@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
         }
         else
         {
-            fprintf(stderr, "Invalid file format: %s\n", argv[i]);
+            fprintf(stderr, COLOR_RED "Invalid file format" COLOR_RESET ": %s\n", argv[i]);
             continue;
         }
 
@@ -55,24 +55,38 @@ int main(int argc, char *argv[])
         FILE *file_data = fopen(argv[i], "rb");
         if (!file_data)
         {
-            fprintf(stderr, "Error opening file: %s\n", argv[i]);
+            fprintf(stderr, COLOR_RED "Error opening file" COLOR_RESET ": %s\n", argv[i]);
             continue;
         }
 
         // Create CSV files
         char csv_filename[256];
         // Accelerometer CSV file
-        snprintf(csv_filename, sizeof(csv_filename), "%s/" FILE_NAME_FORMAT_ACCELEROMETER, dir, file_prefix);
+        snprintf(
+            csv_filename,
+            sizeof(csv_filename),
+            "%s/" FILE_NAME_FORMAT_ACCELEROMETER,
+            dir,
+            file_prefix);
         FILE *csv_accel = fopen(csv_filename, "w+");
         // Telemetry CSV file
-        snprintf(csv_filename, sizeof(csv_filename), "%s/" FILE_NAME_FORMAT_TELEMETRY, dir, file_prefix);
+        snprintf(
+            csv_filename,
+            sizeof(csv_filename),
+            "%s/" FILE_NAME_FORMAT_TELEMETRY,
+            dir,
+            file_prefix);
         FILE *csv_telemetry = fopen(csv_filename, "w+");
 
         // Write CSV headers
         if (fprintf(csv_accel, CSV_HEADER_ACCELEROMETER) < 0 ||
             fprintf(csv_telemetry, CSV_HEADER_TELEMETRY) < 0)
         {
-            fprintf(stderr, "Error writing header to CSV files for %s\n", argv[i]);
+            fprintf(
+                stderr,
+                COLOR_RED "Error writing header to CSV files" COLOR_RESET
+                          " for: %s\n",
+                argv[i]);
             fclose(file_data);
             fclose(csv_accel);
             fclose(csv_telemetry);
@@ -112,7 +126,11 @@ int main(int argc, char *argv[])
                                 packet.y_buffer[j],
                                 packet.z_buffer[j]) < 0)
                     {
-                        fprintf(stderr, "Error writing accelerometer data to CSV file for file: %s\n", argv[i]);
+                        fprintf(
+                            stderr,
+                            COLOR_RED "Error writing accelerometer data to CSV file" COLOR_RESET
+                                      " for: %s\n",
+                            argv[i]);
                         break;
                     }
                 }
@@ -140,7 +158,11 @@ int main(int argc, char *argv[])
                             packet.current_humidity,
                             packet.battery_voltage) < 0)
                 {
-                    fprintf(stderr, "Error writing telemetry data to CSV file for file: %s\n", argv[i]);
+                    fprintf(
+                        stderr,
+                        COLOR_RED "Error writing telemetry data to CSV file" COLOR_RESET
+                                  " for: %s\n",
+                        argv[i]);
                     break;
                 }
             }
@@ -173,13 +195,16 @@ int main(int argc, char *argv[])
         {
             color = COLOR_BRIGHT_RED;
         }
-        printf("Finished file %s: \t%s%5.1f%%" COLOR_RESET " \t(%*d/%s bytes) valid\n",
-               argv[i],
-               color,
-               bytes_valid_percentage,
-               (int)strlen(bytes_valid_buffer),
-               bytes_valid,
-               bytes_valid_buffer);
+        printf(
+            COLOR_MAGENTA "Finished file" COLOR_RESET
+                          " %s: \t%s%5.1f%%" COLOR_RESET
+                          " \t(%*d/%s bytes) valid\n",
+            argv[i],
+            color,
+            bytes_valid_percentage,
+            (int)strlen(bytes_valid_buffer),
+            bytes_valid,
+            bytes_valid_buffer);
 
         // Close files
         fclose(file_data);
