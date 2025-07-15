@@ -12,6 +12,11 @@
         break;                                                                                   \
     }
 
+#define LIST_ACC_TIME(instance, type, name, size, i) \
+    LIST(instance, type, name, size, +((i - (FFT_SIZE_SINGLE - 1)) * (1 / SAMPLING_RATE * 1000)))
+#define LIST_ACC_VALUE(instance, type, name, size, i) \
+    LIST(instance, type, name, size, [i])
+
 int main(int argc, char *argv[])
 {
     if (argc < 2)
@@ -119,13 +124,10 @@ int main(int argc, char *argv[])
                 // Extrapolate data in buffers backwards based on sampling rate
                 for (int j = 0; j < FFT_SIZE_SINGLE; j++)
                 {
-                    if (fprintf(csv_accel, "%f,%d,%d,%d\n",
-                                packet.time_elapsed +
-                                    // TODO: Investigate the time extrapolation
-                                    ((j - (FFT_SIZE_SINGLE - 1)) * (1 / SAMPLING_RATE * 1000)),
-                                packet.x_buffer[j],
-                                packet.y_buffer[j],
-                                packet.z_buffer[j]) < 0)
+                    if (fprintf(
+                            csv_accel,
+                            CSV_FORMAT_ACCELEROMETER
+                                ACCELEROMETER_PACKET(packet, LIST_ACC_TIME, LIST_ACC_VALUE, j)) < 0)
                     {
                         fprintf(
                             stderr,
@@ -148,16 +150,8 @@ int main(int argc, char *argv[])
 
                 bytes_valid += sizeof(SD_packet_telemetry);
                 // Write to CSV file
-                if (fprintf(csv_telemetry, "%u,%d,%d,%d,%f,%f,%f,%f,%f\n",
-                            packet.time_elapsed,
-                            packet.ok,
-                            packet.sampling_state,
-                            packet.temp_control_state,
-                            packet.target_temp,
-                            packet.current_temp,
-                            packet.current_pressure,
-                            packet.current_humidity,
-                            packet.battery_voltage) < 0)
+                if (fprintf(csv_telemetry, CSV_FORMAT_TELEMETRY
+                                               TELEMETRY_PACKET(packet, LIST)) < 0)
                 {
                     fprintf(
                         stderr,
