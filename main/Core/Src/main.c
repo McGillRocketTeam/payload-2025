@@ -117,6 +117,7 @@ float battery_voltage, cooler_current;
 // FFT variables
 float peak_amp_x, peak_amp_y, peak_amp_z;
 float peak_freq_x, peak_freq_y, peak_freq_z;
+
 // Temperature control
 float target_temperature;
 bool temperature_control_enabled;
@@ -127,6 +128,7 @@ volatile bool adc_new_sample_ready,
   blink_toggle_ready,
   minor_error_blink_toggle_ready,
   telemetry_report_ready;
+volatile uint32_t accelerometer_sample_time;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -363,7 +365,7 @@ int main(void)
     {
       // Write new accelerometer data to the SD card
       if (!PL_SDCard_WriteAccelerometer(&sd_card,
-                                        HAL_GetTick(),
+    									accelerometer_sample_time,
                                         (uint16_t *)accelerometer.fft_buffer_x,
                                         (uint16_t *)accelerometer.fft_buffer_y,
                                         (uint16_t *)accelerometer.fft_buffer_z))
@@ -1351,6 +1353,7 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 {
   if (hadc == &hadc1)
   {
+	accelerometer_sample_time=HAL_GetTick();
     PL_Accelerometer_Record(&accelerometer, accelerometer_buffer);
   }
 }
@@ -1359,6 +1362,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
   if (hadc == &hadc1)
   {
+    accelerometer_sample_time=HAL_GetTick();
     PL_Accelerometer_Record(&accelerometer, &accelerometer_buffer[FFT_SIZE_TRIPLE]);
   }
 }
