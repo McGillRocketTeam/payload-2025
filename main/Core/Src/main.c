@@ -464,8 +464,14 @@ int main(void)
         break;
       case TOGGLE_COOLER:
         temperature_control_enabled = com.data.on;
-        PL_Log(LOG_CAN_BUS, LOG_TEMPERATURE_SENSOR, LOG_OK,
+        // Log command receipt
+        PL_Log(LOG_CAN_BUS, LOG_PELTIER, LOG_OK,
                "Temperature control switched to %s.", BOOL_TO_ON(com.data.on));
+        // Turn off cooler if required
+        if (!com.data.on)
+        {
+          PL_Peltier_SetCycle(&peltier, 0.0f);
+        }
         break;
       case TOGGLE_LAUNCH_MODE:
         // Launch mode doesn't do anything since we don't need it anymore
