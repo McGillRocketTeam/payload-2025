@@ -1392,7 +1392,7 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 {
   if (hadc == &hadc1)
   {
-	accelerometer_sample_time=HAL_GetTick();
+    accelerometer_sample_time = HAL_GetTick();
     PL_Accelerometer_Record(&accelerometer, accelerometer_buffer);
   }
 }
@@ -1401,7 +1401,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
   if (hadc == &hadc1)
   {
-    accelerometer_sample_time=HAL_GetTick();
+    accelerometer_sample_time = HAL_GetTick();
     PL_Accelerometer_Record(&accelerometer, &accelerometer_buffer[FFT_SIZE_TRIPLE]);
   }
 }
@@ -1422,7 +1422,7 @@ void Minor_Error(enum log_category category, const char *msg)
   if (ok)
   {
     minor_errors++;
-    /* 
+    /*
      * Color number of minor errors depending on how many occurred.
      * < 1/3 of max -> COLOR_OK
      * < 2/3 of max -> COLOR_WARNING
