@@ -17,7 +17,13 @@ float PID_step(struct PID *pid, float measurement, float setpoint, uint32_t t1)
 
     /* Calculate time step */
     dt = (t1 - pid->t_0) / 1000.0f; // Convert milliseconds to seconds
-    pid->t_0 = t1;                  // Update previous time
+    // Skip this step if no time has passed to avoid division by zero
+    if (dt == 0)
+    {
+    	// Return the previous command
+    	return pid->command_sat_prev;
+    }
+    pid->t_0 = t1; // Update previous time
 
     /* Error calculation */
     err = setpoint - measurement;
