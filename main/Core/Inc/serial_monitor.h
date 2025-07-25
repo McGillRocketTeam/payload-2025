@@ -51,7 +51,7 @@ extern UART_HandleTypeDef huart4;
 #define FILTER_MODE_PRIMARY 2
 
 // The filter mode to use
-#define FILTER_MODE FILTER_MODE_STRICT
+#define FILTER_MODE FILTER_MODE_LENIENT
 
 enum log_category
 {
