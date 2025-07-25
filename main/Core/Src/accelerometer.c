@@ -46,7 +46,7 @@ bool PL_Accelerometer_Start(PL_Accelerometer_Handler *accel)
     if (accel->sampling)
     {
         // Power on the accelerometer
-        HAL_GPIO_WritePin(accel->power_GPIO_Port, accel->power_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(accel->power_GPIO_Port, accel->power_Pin, GPIO_PIN_RESET);
     }
     // Return whether accelerometer was succesfully toggled on
     return accel->sampling;
@@ -66,7 +66,7 @@ bool PL_Accelerometer_Stop(PL_Accelerometer_Handler *accel)
     if (!accel->sampling)
     {
         // Power off the accelerometer
-        HAL_GPIO_WritePin(accel->power_GPIO_Port, accel->power_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(accel->power_GPIO_Port, accel->power_Pin, GPIO_PIN_SET);
     }
     // Return whether accelerometer was succesfully toggled off
     return !accel->sampling;
