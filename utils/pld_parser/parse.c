@@ -99,8 +99,23 @@ int main(int argc, char *argv[])
             continue;
         }
 
+        // Determine total file size by moving to the end of the file, finding the byte index of the location,
+        // then moving back to the beginning.
+        fseek(file_data, 0, SEEK_END);
+        const long file_size = ftell(file_data);
+        fseek(file_data, 0, SEEK_SET);
+        // Format total file size into a string to find out how long it is (for padding)
+        char file_size_buffer[32];
+        snprintf(file_size_buffer, sizeof(file_size_buffer), "%ld", file_size);
+        const int file_size_length = strlen(file_size_buffer);
+        const int file_name_length = strlen(name);
+        const int progress_bar_length = PROGRESS_BAR_LENGTH_MIN > file_name_length
+                                            ? PROGRESS_BAR_LENGTH_MIN
+                                            : file_name_length;
         // Track total number of valid bytes read
         int bytes_valid = 0;
+        int accelerometer_packets = 0;
+        int telemetry_packets = 0;
 
         while (!feof(file_data))
         {
@@ -137,6 +152,7 @@ int main(int argc, char *argv[])
                         break;
                     }
                 }
+                accelerometer_packets++;
             }
             // Telemetry packet
             else if (strncmp(header, HEADER_TELEMETRY, PACKET_HEADER_LENGTH) == 0)
@@ -160,6 +176,7 @@ int main(int argc, char *argv[])
                         argv[i]);
                     break;
                 }
+                telemetry_packets++;
             }
             // Corrupted packet
             else
@@ -168,38 +185,70 @@ int main(int argc, char *argv[])
                 // We do this by going backwards by one less than the length of what we just read
                 fseek(file_data, -(PACKET_HEADER_LENGTH - 1), SEEK_CUR);
             }
+
+            // Print progress bar
+            long location = ftell(file_data);
+            int progress = location / (file_size / progress_bar_length);
+            float bytes_valid_percentage = (float)bytes_valid / location * 100;
+            // Decide colors
+            char *percent_valid_color;
+            if (bytes_valid_percentage > 97.5f)
+            {
+                percent_valid_color = COLOR_BRIGHT_GREEN;
+            }
+            else if (bytes_valid_percentage > 95.0f)
+            {
+                percent_valid_color = COLOR_BRIGHT_YELLOW;
+            }
+            else
+            {
+                percent_valid_color = COLOR_BRIGHT_RED;
+            }
+            char *bytes_color = location != file_size ? COLOR_CYAN : COLOR_MAGENTA;
+
+            printf(
+                // Carriage return to beginning of the line
+                "\r"
+                // Turn off cursor to prevent flickering
+                "\e[?25l"
+                // Print first portion of padded filename highlighted, then second portion unhighlighted
+                "[" COLOR_BACKGROUND_WHITE "%-*.*s" COLOR_RESET "%-*s"
+                "] "
+                "%s"
+                "%*ld" COLOR_RESET "/" COLOR_MAGENTA "%s" COLOR_RESET " bytes"
+                " | "
+                "%s"
+                "%5.1f%%" COLOR_RESET " valid "
+                "(" COLOR_RED "%ld" COLOR_RESET " error bytes)"
+                " | " COLOR_YELLOW "%5d" COLOR_RESET " accelerometer packets"
+                " | " COLOR_BLUE "%5d" COLOR_RESET " telemetry packets"
+                "\e[?25h", // Turn cursor back on
+                progress,
+                progress,
+                name,
+                progress_bar_length - progress,
+                name + progress,
+                bytes_color,
+                file_size_length,
+                location,
+                file_size_buffer,
+                percent_valid_color,
+                bytes_valid_percentage,
+                location - bytes_valid,
+                accelerometer_packets,
+                telemetry_packets);
+            fflush(stdout);
         }
-        // Ensure we reached the end of the file in case of a reading error, for determining total size
-        fseek(file_data, 0, SEEK_END);
-        // Format total file size into a string to find out how long it is (for padding)
-        long file_size = ftell(file_data);
-        char bytes_valid_buffer[32];
-        snprintf(bytes_valid_buffer, sizeof(bytes_valid_buffer), "%ld", file_size);
-        float bytes_valid_percentage = (float)bytes_valid / file_size * 100;
-        // Decide colors
-        char *color;
-        if (bytes_valid_percentage > 97.5f)
+        // If the file is empty, the above while loop will have been skipped
+        if (file_size == 0)
         {
-            color = COLOR_BRIGHT_GREEN;
+            printf(
+                "[" COLOR_BACKGROUND_WHITE
+                "%-*s" COLOR_RESET
+                "] " COLOR_DARK_GRAY "Empty" COLOR_RESET,
+                progress_bar_length, name);
         }
-        else if (bytes_valid_percentage > 95.0f)
-        {
-            color = COLOR_BRIGHT_YELLOW;
-        }
-        else
-        {
-            color = COLOR_BRIGHT_RED;
-        }
-        printf(
-            COLOR_MAGENTA "Finished file" COLOR_RESET
-                          " %s: \t%s%5.1f%%" COLOR_RESET
-                          " \t(%*d/%s bytes) valid\n",
-            argv[i],
-            color,
-            bytes_valid_percentage,
-            (int)strlen(bytes_valid_buffer),
-            bytes_valid,
-            bytes_valid_buffer);
+        printf("\n");
 
         // Close files
         fclose(file_data);

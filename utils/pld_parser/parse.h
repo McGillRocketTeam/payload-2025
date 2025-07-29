@@ -15,6 +15,8 @@
 #define FILE_NAME_FORMAT_ACCELEROMETER "%s_accelerometer.csv"
 #define FILE_NAME_FORMAT_TELEMETRY "%s_telemetry.csv"
 
+#define PROGRESS_BAR_LENGTH_MIN 20
+
 // ANSI color escape codes
 #define COLOR_RESET          "\x1b[0m"
 #define COLOR_NONE           COLOR_RESET
@@ -34,6 +36,23 @@
 #define COLOR_BRIGHT_MAGENTA "\x1b[95m"
 #define COLOR_BRIGHT_CYAN    "\x1b[96m"
 #define COLOR_WHITE          "\x1b[97m"
+
+#define COLOR_BACKGROUND_BLACK          "\x1b[40m"
+#define COLOR_BACKGROUND_RED            "\x1b[41m"
+#define COLOR_BACKGROUND_GREEN          "\x1b[42m"
+#define COLOR_BACKGROUND_YELLOW         "\x1b[43m"
+#define COLOR_BACKGROUND_BLUE           "\x1b[44m"
+#define COLOR_BACKGROUND_MAGENTA        "\x1b[45m"
+#define COLOR_BACKGROUND_CYAN           "\x1b[46m"
+#define COLOR_BACKGROUND_LIGHT_GRAY     "\x1b[47m"
+#define COLOR_BACKGROUND_DARK_GRAY      "\x1b[100m"
+#define COLOR_BACKGROUND_BRIGHT_RED     "\x1b[101m"
+#define COLOR_BACKGROUND_BRIGHT_GREEN   "\x1b[102m"
+#define COLOR_BACKGROUND_BRIGHT_YELLOW  "\x1b[103m"
+#define COLOR_BACKGROUND_BRIGHT_BLUE    "\x1b[104m"
+#define COLOR_BACKGROUND_BRIGHT_MAGENTA "\x1b[105m"
+#define COLOR_BACKGROUND_BRIGHT_CYAN    "\x1b[106m"
+#define COLOR_BACKGROUND_WHITE          "\x1b[107m"
 
 // Macro to define a struct field
 #define FIELD(instance, type, name, size, suffix) type name;
