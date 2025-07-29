@@ -6,6 +6,10 @@
 *[Dd]ebug
 *.launch
 
+# Python virtual environment
+
+.venv
+
 # Apple
 
 *.DS_Store
