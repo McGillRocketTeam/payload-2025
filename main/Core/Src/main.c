@@ -368,6 +368,12 @@ int main(void)
              (int)(1000 * cooler_current));
 
       adc_new_sample_ready = false;
+
+      if (PL_ADC_GetBatteryVoltage(&adc) < 12.0f){
+          	PL_Peltier_SetCycle(&peltier, 0.0f);
+          	temperature_control_enabled=false;
+          }
+
     }
 
     if (BME280_sample_ready)

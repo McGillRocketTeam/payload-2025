@@ -10,7 +10,7 @@
 #define __ENABLED_H
 
 // Set to 0 to disable a feature
-#define FINAL_BUILD 0
+#define FINAL_BUILD 1
 
 // Independent features
 #define ADC_ENABLED 1
