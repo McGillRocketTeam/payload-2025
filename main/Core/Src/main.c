@@ -73,6 +73,7 @@
 #define MINOR_ERROR_BLINK_TIME 100 // milliseconds
 // Other
 #define PELTIER_START_CYCLE 0.0f
+#define COOLING_STOP_VOLTAGE 13.9 // volts
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -368,8 +369,8 @@ int main(void)
              (int)(1000 * cooler_current));
 
       adc_new_sample_ready = false;
-
-      if (PL_ADC_GetBatteryVoltage(&adc) < 13.0f)
+      
+      if (PL_ADC_GetBatteryVoltage(&adc) < COOLING_STOP_VOLTAGE)
       {
         PL_Peltier_SetCycle(&peltier, 0.0f);
         temperature_control_enabled = false;
