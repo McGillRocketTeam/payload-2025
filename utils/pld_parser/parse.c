@@ -3,13 +3,13 @@
 #include <string.h>
 #include <libgen.h>
 
-#define READ_ERROR(what)                                                                         \
-    {                                                                                            \
-        if (!feof(file_data))                                                                    \
-        {                                                                                        \
-            fprintf(stderr, COLOR_RED "Error reading " what COLOR_RESET " from: %s\n", argv[i]); \
-        }                                                                                        \
-        break;                                                                                   \
+#define READ_ERROR(what)                                                                              \
+    {                                                                                                 \
+        if (!feof(file_data))                                                                         \
+        {                                                                                             \
+            fprintf(stderr, "\n" COLOR_RED "Error reading " what COLOR_RESET " from: %s\n", argv[i]); \
+        }                                                                                             \
+        break;                                                                                        \
     }
 
 #define LIST_ACC_TIME(instance, type, name, size, i) \
@@ -18,6 +18,18 @@
     LIST(instance, type, name, size, [i])
 
 bool write_accelerometer_data(FILE *csv_accel, SD_packet_accelerometer packet);
+
+struct progress_bar
+{
+    FILE *file_data;
+    long file_size;
+    char *name;
+    char file_size_buffer[32];
+    int file_size_length;
+    int progress_bar_length;
+};
+
+void print_progress(struct progress_bar bar, int bytes_valid, int accelerometer_packets, int telemetry_packets);
 
 int main(int argc, char *argv[])
 {
@@ -148,18 +160,36 @@ int main(int argc, char *argv[])
         fseek(file_data, 0, SEEK_END);
         const long file_size = ftell(file_data);
         fseek(file_data, 0, SEEK_SET);
+
+        struct progress_bar bar = {0};
+        bar.file_data = file_data;
+        bar.file_size = file_size;
+        bar.name = name;
         // Format total file size into a string to find out how long it is (for padding)
-        char file_size_buffer[32];
-        snprintf(file_size_buffer, sizeof(file_size_buffer), "%ld", file_size);
-        const int file_size_length = strlen(file_size_buffer);
+        snprintf(bar.file_size_buffer, sizeof(bar.file_size_buffer), "%ld", file_size);
+        bar.file_size_length = strlen(bar.file_size_buffer);
         const int file_name_length = strlen(name);
-        const int progress_bar_length = PROGRESS_BAR_LENGTH_MIN > file_name_length
-                                            ? PROGRESS_BAR_LENGTH_MIN
-                                            : file_name_length;
+        bar.progress_bar_length = PROGRESS_BAR_LENGTH_MIN > file_name_length
+                                      ? PROGRESS_BAR_LENGTH_MIN
+                                      : file_name_length;
+
+        // If the file is empty
+        if (file_size == 0)
+        {
+            printf(
+                "[" COLOR_BACKGROUND_WHITE
+                "%-*s" COLOR_RESET
+                "] " COLOR_DARK_GRAY "Empty" COLOR_RESET "\n",
+                bar.progress_bar_length, name);
+            continue;
+        }
+
         // Track total number of valid bytes read
         int bytes_valid = 0;
         int accelerometer_packets = 0;
         int telemetry_packets = 0;
+
+        print_progress(bar, bytes_valid, accelerometer_packets, telemetry_packets);
 
         while (!feof(file_data))
         {
@@ -187,8 +217,8 @@ int main(int argc, char *argv[])
                     {
                         fprintf(
                             stderr,
-                            COLOR_RED "Error writing accelerometer data to CSV file" COLOR_RESET
-                                      " for: %s\n",
+                            "\n" COLOR_RED "Error writing accelerometer data to CSV file" COLOR_RESET
+                            " for: %s\n",
                             argv[i]);
                         break;
                     }
@@ -214,8 +244,8 @@ int main(int argc, char *argv[])
                     {
                         fprintf(
                             stderr,
-                            COLOR_RED "Error writing telemetry data to CSV file" COLOR_RESET
-                                      " for: %s\n",
+                            "\n" COLOR_RED "Error writing telemetry data to CSV file" COLOR_RESET
+                            " for: %s\n",
                             argv[i]);
                         break;
                     }
@@ -230,67 +260,7 @@ int main(int argc, char *argv[])
                 fseek(file_data, -(PACKET_HEADER_LENGTH - 1), SEEK_CUR);
             }
 
-            // Print progress bar
-            long location = ftell(file_data);
-            int progress = location / (file_size / progress_bar_length);
-            float bytes_valid_percentage = (float)bytes_valid / location * 100;
-            // Decide colors
-            char *percent_valid_color;
-            if (bytes_valid_percentage > 97.5f)
-            {
-                percent_valid_color = COLOR_BRIGHT_GREEN;
-            }
-            else if (bytes_valid_percentage > 95.0f)
-            {
-                percent_valid_color = COLOR_BRIGHT_YELLOW;
-            }
-            else
-            {
-                percent_valid_color = COLOR_BRIGHT_RED;
-            }
-            char *bytes_color = location != file_size ? COLOR_CYAN : COLOR_MAGENTA;
-
-            printf(
-                // Carriage return to beginning of the line
-                "\r"
-                // Turn off cursor to prevent flickering
-                "\e[?25l"
-                // Print first portion of padded filename highlighted, then second portion unhighlighted
-                "[" COLOR_BACKGROUND_WHITE "%-*.*s" COLOR_RESET "%-*s"
-                "] "
-                "%s"
-                "%*ld" COLOR_RESET "/" COLOR_MAGENTA "%s" COLOR_RESET " bytes"
-                " | "
-                "%s"
-                "%5.1f%%" COLOR_RESET " valid "
-                "(" COLOR_RED "%ld" COLOR_RESET " error bytes)"
-                " | " COLOR_YELLOW "%5d" COLOR_RESET " accelerometer packets"
-                " | " COLOR_BLUE "%5d" COLOR_RESET " telemetry packets"
-                "\e[?25h", // Turn cursor back on
-                progress,
-                progress,
-                name,
-                progress_bar_length - progress,
-                name + progress,
-                bytes_color,
-                file_size_length,
-                location,
-                file_size_buffer,
-                percent_valid_color,
-                bytes_valid_percentage,
-                location - bytes_valid,
-                accelerometer_packets,
-                telemetry_packets);
-            fflush(stdout);
-        }
-        // If the file is empty, the above while loop will have been skipped
-        if (file_size == 0)
-        {
-            printf(
-                "[" COLOR_BACKGROUND_WHITE
-                "%-*s" COLOR_RESET
-                "] " COLOR_DARK_GRAY "Empty" COLOR_RESET,
-                progress_bar_length, name);
+            print_progress(bar, bytes_valid, accelerometer_packets, telemetry_packets);
         }
         printf("\n");
 
@@ -323,4 +293,59 @@ bool write_accelerometer_data(FILE *csv_accel, SD_packet_accelerometer packet)
         }
     }
     return true;
+}
+
+void print_progress(struct progress_bar bar, int bytes_valid, int accelerometer_packets, int telemetry_packets)
+{
+    long location = ftell(bar.file_data);
+    int progress = location / (bar.file_size / bar.progress_bar_length);
+    float bytes_valid_percentage = (float)bytes_valid / location * 100;
+    // Decide colors
+    char *percent_valid_color;
+    if (bytes_valid_percentage > 97.5f)
+    {
+        percent_valid_color = COLOR_BRIGHT_GREEN;
+    }
+    else if (bytes_valid_percentage > 95.0f)
+    {
+        percent_valid_color = COLOR_BRIGHT_YELLOW;
+    }
+    else
+    {
+        percent_valid_color = COLOR_BRIGHT_RED;
+    }
+    char *bytes_color = location != bar.file_size ? COLOR_CYAN : COLOR_MAGENTA;
+
+    printf(
+        // Carriage return to beginning of the line
+        "\r"
+        // Turn off cursor to prevent flickering
+        "\e[?25l"
+        // Print first portion of padded filename highlighted, then second portion unhighlighted
+        "[" COLOR_BACKGROUND_WHITE "%-*.*s" COLOR_RESET "%-*s"
+        "] "
+        "%s"
+        "%*ld" COLOR_RESET "/" COLOR_MAGENTA "%s" COLOR_RESET " bytes"
+        " | "
+        "%s"
+        "%5.1f%%" COLOR_RESET " valid "
+        "(" COLOR_RED "%ld" COLOR_RESET " error bytes)"
+        " | " COLOR_YELLOW "%5d" COLOR_RESET " accelerometer packets"
+        " | " COLOR_BLUE "%5d" COLOR_RESET " telemetry packets"
+        "\e[?25h", // Turn cursor back on
+        progress,
+        progress,
+        bar.name,
+        bar.progress_bar_length - progress,
+        bar.name + progress,
+        bytes_color,
+        bar.file_size_length,
+        location,
+        bar.file_size_buffer,
+        percent_valid_color,
+        bytes_valid_percentage,
+        location - bytes_valid,
+        accelerometer_packets,
+        telemetry_packets);
+    fflush(stdout);
 }
