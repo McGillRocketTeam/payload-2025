@@ -23,6 +23,8 @@ First, ensure you have [compiled](#compilation) the parser.
 If you're in the current directory, use can run the parser with `./parse` on UNIX and `.\parse.exe` on Windows.
 If you're in the project root, you can run the parser with `./utils/pld_parser/parse` or `.\utils\pld_parser\parse.exe`.
 
+Put the `-a | --accelerometer` or `-t | --telemetry` flags anywhere in the argument list to make the parser only save the acceleromter or telemetry data respectively.
+
 Each argument to the parser should be a path to a `.pld` file (case insensitive).
 For each file passed to the parser, two `.csv` files will be created in the same directory as the corresponding `.pld` file.
 One will contain the telemetry data, and one will contain the accelerometer data.
@@ -32,8 +34,8 @@ One will contain the telemetry data, and one will contain the accelerometer data
 > ```bash
 > # Parses the file DATAn.PLD in the current directory into DATAn_accelerometer.csv and DATAn_telemetry.csv
 > ./parser ./DATAn.PLD
-> # Parses the file DATAx.PLD in the data directory into ~/data/DATAx_accelerometer.csv and ~/data/DATAx_telemetry.csv
-> ./parser ~/data/DATAx.PLD
+> # Parses the file DATAx.PLD in the data directory into ~/data/DATAx_accelerometer.csv and ~/data/DATAx_telemetry.csv, only saving telemetry data.
+> ./parser -t ~/data/DATAx.PLD
 > ```
 
 ## Customization

@@ -25,9 +25,36 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    int flag_index = 0;
+    bool save_accelerometer = true;
+    bool save_telemetry = true;
+    for (int i = 0; i < argc; i++)
+    {
+        if (strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--accelerometer") == 0)
+        {
+            flag_index = i;
+            save_telemetry = false;
+        }
+        else if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--telemetry") == 0)
+        {
+            flag_index = i;
+            save_accelerometer = false;
+        }
+    }
+    if (!save_accelerometer && !save_telemetry)
+    {
+        fprintf(stderr, "Cannot use both accelerometer and telemetry flags at once.\n");
+        return 1;
+    }
+
     // Process each input file
     for (int i = 1; i < argc; i++)
     {
+        if (i == flag_index)
+        {
+            continue;
+        }
+
         // Copy of file path to pass to `basename` and `dirname`
         // Initialize to zero to ensure termination
         char path[256] = {0};
@@ -74,7 +101,11 @@ int main(int argc, char *argv[])
             "%s/" FILE_NAME_FORMAT_ACCELEROMETER,
             dir,
             file_prefix);
-        FILE *csv_accel = fopen(csv_filename, "w+");
+        FILE *csv_accel;
+        if (save_accelerometer)
+        {
+            csv_accel = fopen(csv_filename, "w+");
+        }
         // Telemetry CSV file
         snprintf(
             csv_filename,
@@ -82,11 +113,16 @@ int main(int argc, char *argv[])
             "%s/" FILE_NAME_FORMAT_TELEMETRY,
             dir,
             file_prefix);
-        FILE *csv_telemetry = fopen(csv_filename, "w+");
+        FILE *csv_telemetry;
+        if (save_telemetry)
+        {
+            csv_telemetry = fopen(csv_filename, "w+");
+        }
 
         // Write CSV headers
-        if (fprintf(csv_accel, CSV_HEADER_ACCELEROMETER) < 0 ||
-            fprintf(csv_telemetry, CSV_HEADER_TELEMETRY) < 0)
+        bool accel_result = save_accelerometer ? fprintf(csv_accel, CSV_HEADER_ACCELEROMETER) >= 0 : true;
+        bool telemetry_result = save_telemetry ? fprintf(csv_telemetry, CSV_HEADER_TELEMETRY) >= 0 : true;
+        if (!accel_result || !telemetry_result)
         {
             fprintf(
                 stderr,
@@ -94,8 +130,14 @@ int main(int argc, char *argv[])
                           " for: %s\n",
                 argv[i]);
             fclose(file_data);
-            fclose(csv_accel);
-            fclose(csv_telemetry);
+            if (save_accelerometer)
+            {
+                fclose(csv_accel);
+            }
+            if (save_telemetry)
+            {
+                fclose(csv_telemetry);
+            }
             continue;
         }
 
@@ -139,17 +181,20 @@ int main(int argc, char *argv[])
                 // Extrapolate data in buffers backwards based on sampling rate
                 for (int j = 0; j < FFT_SIZE_SINGLE; j++)
                 {
-                    if (fprintf(
-                            csv_accel,
-                            CSV_FORMAT_ACCELEROMETER
-                                ACCELEROMETER_PACKET(packet, LIST_ACC_TIME, LIST_ACC_VALUE, j)) < 0)
+                    if (save_accelerometer)
                     {
-                        fprintf(
-                            stderr,
-                            COLOR_RED "Error writing accelerometer data to CSV file" COLOR_RESET
-                                      " for: %s\n",
-                            argv[i]);
-                        break;
+                        if (fprintf(
+                                csv_accel,
+                                CSV_FORMAT_ACCELEROMETER
+                                    ACCELEROMETER_PACKET(packet, LIST_ACC_TIME, LIST_ACC_VALUE, j)) < 0)
+                        {
+                            fprintf(
+                                stderr,
+                                COLOR_RED "Error writing accelerometer data to CSV file" COLOR_RESET
+                                          " for: %s\n",
+                                argv[i]);
+                            break;
+                        }
                     }
                 }
                 accelerometer_packets++;
@@ -166,15 +211,18 @@ int main(int argc, char *argv[])
 
                 bytes_valid += sizeof(SD_packet_telemetry);
                 // Write to CSV file
-                if (fprintf(csv_telemetry, CSV_FORMAT_TELEMETRY
-                                               TELEMETRY_PACKET(packet, LIST)) < 0)
+                if (save_telemetry)
                 {
-                    fprintf(
-                        stderr,
-                        COLOR_RED "Error writing telemetry data to CSV file" COLOR_RESET
-                                  " for: %s\n",
-                        argv[i]);
-                    break;
+                    if (fprintf(csv_telemetry, CSV_FORMAT_TELEMETRY
+                                                   TELEMETRY_PACKET(packet, LIST)) < 0)
+                    {
+                        fprintf(
+                            stderr,
+                            COLOR_RED "Error writing telemetry data to CSV file" COLOR_RESET
+                                      " for: %s\n",
+                            argv[i]);
+                        break;
+                    }
                 }
                 telemetry_packets++;
             }
@@ -252,8 +300,14 @@ int main(int argc, char *argv[])
 
         // Close files
         fclose(file_data);
-        fclose(csv_accel);
-        fclose(csv_telemetry);
+        if (save_accelerometer)
+        {
+            fclose(csv_accel);
+        }
+        if (save_telemetry)
+        {
+            fclose(csv_telemetry);
+        }
     }
 
     return 0;
