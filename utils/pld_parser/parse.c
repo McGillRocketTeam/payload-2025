@@ -326,12 +326,12 @@ void print_progress(struct progress_bar bar, int bytes_valid, int accelerometer_
         "] "
         "%s"
         "%*ld" COLOR_RESET "/" COLOR_MAGENTA "%s" COLOR_RESET " bytes"
-        " | "
+        "\t| "
         "%s"
         "%5.1f%%" COLOR_RESET " valid "
         "(" COLOR_RED "%ld" COLOR_RESET " error bytes)"
-        " | " COLOR_YELLOW "%5d" COLOR_RESET " accelerometer packets"
-        " | " COLOR_BLUE "%5d" COLOR_RESET " telemetry packets"
+        "\t| " COLOR_YELLOW "%5d" COLOR_RESET " accelerometer packets"
+        "\t| " COLOR_BLUE "%5d" COLOR_RESET " telemetry packets"
         "\e[?25h", // Turn cursor back on
         progress,
         progress,
