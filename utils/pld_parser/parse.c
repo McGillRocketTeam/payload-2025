@@ -17,6 +17,8 @@
 #define LIST_ACC_VALUE(instance, type, name, size, i) \
     LIST(instance, type, name, size, [i])
 
+bool write_accelerometer_data(FILE *csv_accel, SD_packet_accelerometer packet);
+
 int main(int argc, char *argv[])
 {
     if (argc < 2)
@@ -178,23 +180,17 @@ int main(int argc, char *argv[])
 
                 bytes_valid += sizeof(SD_packet_accelerometer);
                 // Write to CSV file
-                // Extrapolate data in buffers backwards based on sampling rate
-                for (int j = 0; j < FFT_SIZE_SINGLE; j++)
+                if (save_accelerometer)
                 {
-                    if (save_accelerometer)
+                    // Extrapolate data in buffers backwards based on sampling rate
+                    if (!write_accelerometer_data(csv_accel, packet))
                     {
-                        if (fprintf(
-                                csv_accel,
-                                CSV_FORMAT_ACCELEROMETER
-                                    ACCELEROMETER_PACKET(packet, LIST_ACC_TIME, LIST_ACC_VALUE, j)) < 0)
-                        {
-                            fprintf(
-                                stderr,
-                                COLOR_RED "Error writing accelerometer data to CSV file" COLOR_RESET
-                                          " for: %s\n",
-                                argv[i]);
-                            break;
-                        }
+                        fprintf(
+                            stderr,
+                            COLOR_RED "Error writing accelerometer data to CSV file" COLOR_RESET
+                                      " for: %s\n",
+                            argv[i]);
+                        break;
                     }
                 }
                 accelerometer_packets++;
@@ -311,4 +307,20 @@ int main(int argc, char *argv[])
     }
 
     return 0;
+}
+
+bool write_accelerometer_data(FILE *csv_accel, SD_packet_accelerometer packet)
+{
+    // Extrapolate data in buffers backwards based on sampling rate
+    for (int i = 0; i < FFT_SIZE_SINGLE; i++)
+    {
+        if (fprintf(
+                csv_accel,
+                CSV_FORMAT_ACCELEROMETER
+                    ACCELEROMETER_PACKET(packet, LIST_ACC_TIME, LIST_ACC_VALUE, i)) < 0)
+        {
+            return false;
+        }
+    }
+    return true;
 }
