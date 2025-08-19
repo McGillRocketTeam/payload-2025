@@ -54,19 +54,19 @@
 #define TIM_BLINK htim9
 #define TIM_TELEMETRY htim12
 // CAN conversion constants
-#define TEMPERATURE_FACTOR 100 // Send temperature in centiCelsius to take advantage of the precision
-#define BATTERY_VOLTAGE_SEND_MIN 10.0f // Volts
-#define BATTERY_VOLTAGE_SEND_MAX 21.0f // Volts
-#define BATTERY_VOLTAGE_SEND_FACTOR 256 // 2^8 is the maximum value for a uint8
+#define TEMPERATURE_FACTOR 100           // Send temperature in centiCelsius to take advantage of the precision
+#define BATTERY_VOLTAGE_SEND_MIN 10.0f   // Volts
+#define BATTERY_VOLTAGE_SEND_MAX 21.0f   // Volts
+#define BATTERY_VOLTAGE_SEND_FACTOR 256  // 2^8 is the maximum value for a uint8
 #define VIBRATION_AMPLITUDE_FACTOR 10000 // Send amplitude in mV * 10 to take advantage of the precision
 // PID constants
-#define K_P           0.0f // Proportional gain constant
-#define K_I           0.0f // Integral gain constant
-#define K_D           0.0f // Derivative gain constant
-#define K_AW          0.0f // Anti-windup gain constant
-#define TIME_CONST    0.0f // Time constant for derivative filtering
-#define PID_MAX       1.0f // Max command
-#define PID_MIN       0.0f // Min command
+#define K_P 0.0f           // Proportional gain constant
+#define K_I 0.0f           // Integral gain constant
+#define K_D 0.0f           // Derivative gain constant
+#define K_AW 0.0f          // Anti-windup gain constant
+#define TIME_CONST 0.0f    // Time constant for derivative filtering
+#define PID_MAX 1.0f       // Max command
+#define PID_MIN 0.0f       // Min command
 #define PID_MAX_DERIV 0.0f // Max rate of change of command
 // Error handling constants
 #define MINOR_ERRORS_MAX 128
@@ -74,6 +74,7 @@
 // Other
 #define PELTIER_START_CYCLE 0.0f
 #define COOLING_STOP_VOLTAGE 13.9 // volts
+#define TEMPERATURE_CONTROL_ENABLED (temperature_control_allowed && temperature_control_enabled)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -104,7 +105,7 @@ TIM_HandleTypeDef htim12;
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
-/* PL peripheral driver handlers ---------------------------------------------*/ 
+/* PL peripheral driver handlers ---------------------------------------------*/
 PL_Accelerometer_Handler accelerometer;
 PL_ADC_Handler adc;
 PL_Blink_Handler blink;
@@ -132,14 +133,15 @@ float peak_freq_x, peak_freq_y, peak_freq_z;
 
 // Temperature control
 float target_temperature;
+bool temperature_control_allowed;
 bool temperature_control_enabled;
 
 // Flags for actions triggered by interrupts
 volatile bool adc_new_sample_ready,
-  BME280_sample_ready,
-  blink_toggle_ready,
-  minor_error_blink_toggle_ready,
-  telemetry_report_ready;
+    BME280_sample_ready,
+    blink_toggle_ready,
+    minor_error_blink_toggle_ready,
+    telemetry_report_ready;
 volatile uint32_t accelerometer_sample_time;
 /* USER CODE END PV */
 
@@ -163,7 +165,7 @@ static void MX_TIM8_Init(void);
 static void MX_TIM12_Init(void);
 /* USER CODE BEGIN PFP */
 /**
- * @brief Signals a critical error. Flags Payload as not ok, permanently turns on LD2. 
+ * @brief Signals a critical error. Flags Payload as not ok, permanently turns on LD2.
  * Calls `Error_Handler` if not in final build.
  * @note Critical errors occur if peripheral initialization fails, or in other similar instances.
  * @param category The category in which the critical error occurred.
@@ -171,9 +173,9 @@ static void MX_TIM12_Init(void);
  */
 void Critical_Error(enum log_category category, const char *msg);
 /**
- * @brief Signals a minor error. Briefly blinks LD2. Keeps track of number of minor errors, 
+ * @brief Signals a minor error. Briefly blinks LD2. Keeps track of number of minor errors,
  * and triggers `Critical_Error` if it exceeds `MINOR_ERRORS_MAX`.
- * @note Critical errors occur on single failures 
+ * @note Critical errors occur on single failures
  * (i.e. one failed CAN message send or one failed peripheral sample).
  * @param category The category in which the minor error occurred.
  * @param msg A description of the minor error.
@@ -187,14 +189,14 @@ void Minor_Error(enum log_category category, const char *msg);
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
+ * @brief  The application entry point.
+ * @retval int
+ */
 int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-  
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -242,7 +244,8 @@ int main(void)
 
   // Initialize temperature control variables
   target_temperature = TEMPERATURES[0]; // default to coldest temperature
-  temperature_control_enabled = true; // default to cooling being on
+  temperature_control_allowed = true;   // default to cooling being on
+  temperature_control_enabled = true;
 
   // Initialize PID struct
   pid.Kp = K_P;
@@ -369,11 +372,15 @@ int main(void)
              (int)(1000 * cooler_current));
 
       adc_new_sample_ready = false;
-      
+
       if (PL_ADC_GetBatteryVoltage(&adc) < COOLING_STOP_VOLTAGE)
       {
         PL_Peltier_SetCycle(&peltier, 0.0f);
-        temperature_control_enabled = false;
+        temperature_control_allowed = false;
+      }
+      else
+      {
+        temperature_control_allowed = true;
       }
     }
 
@@ -389,23 +396,28 @@ int main(void)
     }
 
     // Step PID controller
-    if (temperature_control_enabled)
+    float peltier_cycle;
+    if (TEMPERATURE_CONTROL_ENABLED)
     {
       // Calculate Peltier duty cycle using PID controller
-      float peltier_cycle = PID_step(&pid, temperature, target_temperature, HAL_GetTick());
-      // Set Peltier duty cycle
-      PL_Peltier_SetCycle(&peltier, peltier_cycle);
-      PL_Log(LOG_PELTIER, LOG_NONE, LOG_OK,
-             "Peltier duty cycle set to %d%%.",
-             (int)(100 * peltier_cycle));
+      peltier_cycle = PID_step(&pid, temperature, target_temperature, HAL_GetTick());
+      peltier_cycle = 1.0f;
     }
+    else
+    {
+      peltier_cycle = 0.0f;
+    }
+    PL_Peltier_SetCycle(&peltier, peltier_cycle);
+    PL_Log(LOG_PELTIER, LOG_NONE, LOG_OK,
+           "Peltier duty cycle set to %d%%.",
+           (int)(100 * peltier_cycle));
 
     /* Communicate with the outside world and other devices ----------------------*/
     if (accelerometer.analysis_ready)
     {
       // Write new accelerometer data to the SD card
       if (!PL_SDCard_WriteAccelerometer(&sd_card,
-    									accelerometer_sample_time,
+                                        accelerometer_sample_time,
                                         (uint16_t *)accelerometer.fft_buffer_x,
                                         (uint16_t *)accelerometer.fft_buffer_y,
                                         (uint16_t *)accelerometer.fft_buffer_z))
@@ -474,11 +486,6 @@ int main(void)
         // Log command receipt
         PL_Log(LOG_CAN_BUS, LOG_PELTIER, LOG_OK,
                "Temperature control switched to %s.", BOOL_TO_ON(com.data.on));
-        // Turn off cooler if required
-        if (!com.data.on)
-        {
-          PL_Peltier_SetCycle(&peltier, 0.0f);
-        }
         break;
       case TOGGLE_LAUNCH_MODE:
         // Launch mode doesn't do anything since we don't need it anymore
@@ -525,7 +532,7 @@ int main(void)
                                     HAL_GetTick(),
                                     ok,
                                     accelerometer.sampling,
-                                    temperature_control_enabled,
+                                    TEMPERATURE_CONTROL_ENABLED,
                                     target_temperature,
                                     temperature,
                                     pressure,
@@ -552,7 +559,7 @@ int main(void)
       if (!PL_CANBus_Send(&can,
                           ok,
                           accelerometer.sampling,
-                          temperature_control_enabled,
+                          TEMPERATURE_CONTROL_ENABLED,
                           target_temperature_index,
                           // Multiply temperature to take advantage of the precision
                           (int16_t)roundf(temperature * TEMPERATURE_FACTOR),
@@ -604,22 +611,22 @@ int main(void)
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+ * @brief System Clock Configuration
+ * @retval None
+ */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
   /** Configure the main internal regulator output voltage
-  */
+   */
   __HAL_RCC_PWR_CLK_ENABLE();
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
 
   /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
+   * in the RCC_OscInitTypeDef structure.
+   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
@@ -636,9 +643,8 @@ void SystemClock_Config(void)
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+   */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
@@ -651,10 +657,10 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief ADC1 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief ADC1 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_ADC1_Init(void)
 {
 
@@ -671,7 +677,7 @@ static void MX_ADC1_Init(void)
   /* USER CODE END ADC1_Init 1 */
 
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
-  */
+   */
   hadc1.Instance = ADC1;
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
@@ -690,7 +696,7 @@ static void MX_ADC1_Init(void)
   }
 
   /** Configure the ADC multi-mode
-  */
+   */
   multimode.Mode = ADC_TRIPLEMODE_REGSIMULT_INJECSIMULT;
   multimode.DMAAccessMode = ADC_DMAACCESSMODE_1;
   multimode.TwoSamplingDelay = ADC_TWOSAMPLINGDELAY_5CYCLES;
@@ -700,7 +706,7 @@ static void MX_ADC1_Init(void)
   }
 
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
-  */
+   */
   sConfig.Channel = ADC_CHANNEL_11;
   sConfig.Rank = 1;
   sConfig.SamplingTime = ADC_SAMPLETIME_56CYCLES;
@@ -710,7 +716,7 @@ static void MX_ADC1_Init(void)
   }
 
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
-  */
+   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_2;
   sConfigInjected.InjectedRank = 1;
   sConfigInjected.InjectedNbrOfConversion = 1;
@@ -727,14 +733,13 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
-
 }
 
 /**
-  * @brief ADC2 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief ADC2 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_ADC2_Init(void)
 {
 
@@ -750,7 +755,7 @@ static void MX_ADC2_Init(void)
   /* USER CODE END ADC2_Init 1 */
 
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
-  */
+   */
   hadc2.Instance = ADC2;
   hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc2.Init.Resolution = ADC_RESOLUTION_12B;
@@ -767,7 +772,7 @@ static void MX_ADC2_Init(void)
   }
 
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
-  */
+   */
   sConfig.Channel = ADC_CHANNEL_12;
   sConfig.Rank = 1;
   sConfig.SamplingTime = ADC_SAMPLETIME_56CYCLES;
@@ -777,7 +782,7 @@ static void MX_ADC2_Init(void)
   }
 
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
-  */
+   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_9;
   sConfigInjected.InjectedRank = 1;
   sConfigInjected.InjectedNbrOfConversion = 1;
@@ -792,14 +797,13 @@ static void MX_ADC2_Init(void)
   /* USER CODE BEGIN ADC2_Init 2 */
 
   /* USER CODE END ADC2_Init 2 */
-
 }
 
 /**
-  * @brief ADC3 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief ADC3 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_ADC3_Init(void)
 {
 
@@ -814,7 +818,7 @@ static void MX_ADC3_Init(void)
   /* USER CODE END ADC3_Init 1 */
 
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
-  */
+   */
   hadc3.Instance = ADC3;
   hadc3.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc3.Init.Resolution = ADC_RESOLUTION_12B;
@@ -831,7 +835,7 @@ static void MX_ADC3_Init(void)
   }
 
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
-  */
+   */
   sConfig.Channel = ADC_CHANNEL_13;
   sConfig.Rank = 1;
   sConfig.SamplingTime = ADC_SAMPLETIME_56CYCLES;
@@ -842,14 +846,13 @@ static void MX_ADC3_Init(void)
   /* USER CODE BEGIN ADC3_Init 2 */
 
   /* USER CODE END ADC3_Init 2 */
-
 }
 
 /**
-  * @brief CAN1 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief CAN1 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_CAN1_Init(void)
 {
 
@@ -879,14 +882,13 @@ static void MX_CAN1_Init(void)
   /* USER CODE BEGIN CAN1_Init 2 */
 
   /* USER CODE END CAN1_Init 2 */
-
 }
 
 /**
-  * @brief I2C3 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief I2C3 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_I2C3_Init(void)
 {
 
@@ -913,14 +915,13 @@ static void MX_I2C3_Init(void)
   /* USER CODE BEGIN I2C3_Init 2 */
 
   /* USER CODE END I2C3_Init 2 */
-
 }
 
 /**
-  * @brief SPI1 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief SPI1 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_SPI1_Init(void)
 {
 
@@ -951,14 +952,13 @@ static void MX_SPI1_Init(void)
   /* USER CODE BEGIN SPI1_Init 2 */
 
   /* USER CODE END SPI1_Init 2 */
-
 }
 
 /**
-  * @brief TIM2 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief TIM2 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_TIM2_Init(void)
 {
 
@@ -973,9 +973,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 7200-1;
+  htim2.Init.Prescaler = 7200 - 1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 10000-1;
+  htim2.Init.Period = 10000 - 1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -996,14 +996,13 @@ static void MX_TIM2_Init(void)
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
-
 }
 
 /**
-  * @brief TIM3 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief TIM3 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_TIM3_Init(void)
 {
 
@@ -1045,14 +1044,13 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 2 */
   HAL_TIM_MspPostInit(&htim3);
-
 }
 
 /**
-  * @brief TIM4 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief TIM4 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_TIM4_Init(void)
 {
 
@@ -1094,14 +1092,13 @@ static void MX_TIM4_Init(void)
 
   /* USER CODE END TIM4_Init 2 */
   HAL_TIM_MspPostInit(&htim4);
-
 }
 
 /**
-  * @brief TIM5 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief TIM5 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_TIM5_Init(void)
 {
 
@@ -1116,9 +1113,9 @@ static void MX_TIM5_Init(void)
 
   /* USER CODE END TIM5_Init 1 */
   htim5.Instance = TIM5;
-  htim5.Init.Prescaler = 7200-1;
+  htim5.Init.Prescaler = 7200 - 1;
   htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim5.Init.Period = 5000-1;
+  htim5.Init.Period = 5000 - 1;
   htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
@@ -1139,14 +1136,13 @@ static void MX_TIM5_Init(void)
   /* USER CODE BEGIN TIM5_Init 2 */
 
   /* USER CODE END TIM5_Init 2 */
-
 }
 
 /**
-  * @brief TIM8 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief TIM8 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_TIM8_Init(void)
 {
 
@@ -1161,9 +1157,9 @@ static void MX_TIM8_Init(void)
 
   /* USER CODE END TIM8_Init 1 */
   htim8.Instance = TIM8;
-  htim8.Init.Prescaler = 72-1;
+  htim8.Init.Prescaler = 72 - 1;
   htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim8.Init.Period = 100-1;
+  htim8.Init.Period = 100 - 1;
   htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim8.Init.RepetitionCounter = 0;
   htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -1185,14 +1181,13 @@ static void MX_TIM8_Init(void)
   /* USER CODE BEGIN TIM8_Init 2 */
 
   /* USER CODE END TIM8_Init 2 */
-
 }
 
 /**
-  * @brief TIM9 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief TIM9 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_TIM9_Init(void)
 {
 
@@ -1206,9 +1201,9 @@ static void MX_TIM9_Init(void)
 
   /* USER CODE END TIM9_Init 1 */
   htim9.Instance = TIM9;
-  htim9.Init.Prescaler = 7200-1;
+  htim9.Init.Prescaler = 7200 - 1;
   htim9.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim9.Init.Period = 1000-1;
+  htim9.Init.Period = 1000 - 1;
   htim9.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim9.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim9) != HAL_OK)
@@ -1223,14 +1218,13 @@ static void MX_TIM9_Init(void)
   /* USER CODE BEGIN TIM9_Init 2 */
 
   /* USER CODE END TIM9_Init 2 */
-
 }
 
 /**
-  * @brief TIM12 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief TIM12 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_TIM12_Init(void)
 {
 
@@ -1244,9 +1238,9 @@ static void MX_TIM12_Init(void)
 
   /* USER CODE END TIM12_Init 1 */
   htim12.Instance = TIM12;
-  htim12.Init.Prescaler = 7200-1;
+  htim12.Init.Prescaler = 7200 - 1;
   htim12.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim12.Init.Period = 4000-1;
+  htim12.Init.Period = 4000 - 1;
   htim12.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim12.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim12) != HAL_OK)
@@ -1261,14 +1255,13 @@ static void MX_TIM12_Init(void)
   /* USER CODE BEGIN TIM12_Init 2 */
 
   /* USER CODE END TIM12_Init 2 */
-
 }
 
 /**
-  * @brief UART4 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief UART4 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_UART4_Init(void)
 {
 
@@ -1294,12 +1287,11 @@ static void MX_UART4_Init(void)
   /* USER CODE BEGIN UART4_Init 2 */
 
   /* USER CODE END UART4_Init 2 */
-
 }
 
 /**
-  * Enable DMA controller clock
-  */
+ * Enable DMA controller clock
+ */
 static void MX_DMA_Init(void)
 {
 
@@ -1310,19 +1302,18 @@ static void MX_DMA_Init(void)
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
-
 }
 
 /**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief GPIO Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -1330,13 +1321,13 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, ACCEL_POWER_Pin|LD1_Pin|LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, ACCEL_POWER_Pin | LD1_Pin | LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(BUCK_GPIO_Port, BUCK_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : ACCEL_POWER_Pin LD1_Pin LD2_Pin */
-  GPIO_InitStruct.Pin = ACCEL_POWER_Pin|LD1_Pin|LD2_Pin;
+  GPIO_InitStruct.Pin = ACCEL_POWER_Pin | LD1_Pin | LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1349,7 +1340,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(COOLER_SHORT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : SD_DETECT_Pin BUTTON_Pin */
-  GPIO_InitStruct.Pin = SD_DETECT_Pin|BUTTON_Pin;
+  GPIO_InitStruct.Pin = SD_DETECT_Pin | BUTTON_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
@@ -1361,8 +1352,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(BUCK_GPIO_Port, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -1473,9 +1464,9 @@ void Minor_Error(enum log_category category, const char *msg)
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
@@ -1487,14 +1478,14 @@ void Error_Handler(void)
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
+ */
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
