@@ -1,15 +1,11 @@
-import matplotlib.pyplot as plt
+import matplotlib.axes as axes
 import numpy as np
 
 
-def plot_data(data: np.ndarray, **kwargs):
+def plot_data(ax: axes.Axes, data: np.ndarray, **kwargs):
     for key, value in kwargs.items():
-        if key == "files":
+        if key == "files" or key == "dir" or key == "limits":
             continue
 
         if value:
-            plt.plot(data["time"] / 1000.0, data[key], label=key)
-
-    plt.xlabel("Time (s)")
-    plt.legend()
-    plt.show()
+            ax.plot(data["time"] / 1000.0, data[key], label=key)
