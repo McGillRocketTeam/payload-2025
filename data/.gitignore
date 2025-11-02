@@ -1,3 +1,0 @@
-# CSV files parsed from PLD (PayLoadData) files
-# They are much too big to store with Git
-*.csv
